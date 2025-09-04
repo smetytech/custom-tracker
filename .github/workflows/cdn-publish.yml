@@ -30,7 +30,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build library
         run: npm run build
@@ -38,61 +38,41 @@ jobs:
       - name: Show build output
         run: ls -l dist
 
-      - name: Extract version
-        id: vars
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Package version: $VERSION"
-
-      - name: Publish dist to cdn branch for jsDelivr
-        env:
-          VERSION: ${{ steps.vars.outputs.version }}
+      - name: Publish dist to cdn branch (jsDelivr)
+        id: publish
         run: |
           set -e
-          git fetch origin cdn || true
-          # Create worktree for cleaner branch manipulation
-          rm -rf cdn-worktree
-          if git show-ref --verify --quiet refs/heads/cdn; then
-            echo "cdn branch exists"
-          else
-            echo "Creating orphan cdn branch"
-            git branch cdn || git checkout --orphan cdn && git reset --hard
-          fi
-          git worktree add cdn-worktree cdn || true
-          rsync -a --delete dist/ cdn-worktree/ # root level files
-          mkdir -p cdn-worktree/v$VERSION
-          rsync -a dist/ cdn-worktree/v$VERSION/
-          cd cdn-worktree
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Detected version: $VERSION"
+          rm -rf cdn-tmp
+          mkdir cdn-tmp
+          cp -R dist/* cdn-tmp/
+          mkdir -p cdn-tmp/v$VERSION
+          cp -R dist/* cdn-tmp/v$VERSION/
+          cd cdn-tmp
+          git init -b cdn
           git config user.name github-actions
           git config user.email github-actions@github.com
-          if [[ -n $(git status --porcelain) ]]; then
-            git add .
-            git commit -m "Publish dist for version $VERSION" || true
-            git push origin cdn
+          git add .
+          git commit -m "CDN build v$VERSION (source $GITHUB_SHA)" >/dev/null
+          git remote add origin https://github.com/${GITHUB_REPOSITORY}.git
+          # Fetch existing tags so we can decide if we create a new one
+          git fetch origin --tags >/dev/null 2>&1 || true
+          # Push (force to ensure branch matches built artifacts only)
+          git push -f origin cdn
+          if git ls-remote --tags origin refs/tags/v$VERSION | grep -q "refs/tags/v$VERSION"; then
+            echo "Tag v$VERSION already exists, not recreating"
           else
-            echo "No changes to commit on cdn branch"
+            git tag v$VERSION
+            git push origin v$VERSION
           fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           cd ..
-          git worktree remove cdn-worktree --force
-
-      - name: Create version tag (if missing)
-        env:
-          VERSION: ${{ steps.vars.outputs.version }}
-        run: |
-          git fetch --tags
-            if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-              echo "Tag v$VERSION already exists"
-            else
-              git tag v$VERSION
-              git push origin v$VERSION
-            fi
 
       - name: jsDelivr URLs
-        env:
-          VERSION: ${{ steps.vars.outputs.version }}
         run: |
-          REPO=${{ github.repository }}
+          VERSION='${{ steps.publish.outputs.version }}'
+          REPO='${{ github.repository }}'
           echo "Latest (branch): https://cdn.jsdelivr.net/gh/$REPO@cdn/tracker.umd.js"
           echo "Versioned (tag): https://cdn.jsdelivr.net/gh/$REPO@v$VERSION/tracker.umd.js"
           echo "Versioned (folder on branch): https://cdn.jsdelivr.net/gh/$REPO@cdn/v$VERSION/tracker.umd.js"
