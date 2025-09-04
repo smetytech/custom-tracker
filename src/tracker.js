@@ -25,7 +25,6 @@ class AnalyticsTracker {
 
     // 2. Bind 'this' for event handlers to ensure they have the correct context
     this.handleGlobalClick = this.handleGlobalClick.bind(this);
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
   }
 
   /**
@@ -34,31 +33,21 @@ class AnalyticsTracker {
    * @private
    */
   handleGlobalClick(e) {
-    // Use .closest() to find the nearest element with a trackable attribute
-    const targetElement = e.target.closest('[data-track-event]');
+  // Accept both data-track-event and a simpler alias data-track
+  // Include additional alias 'data-goal' so buttons with marketing goals are tracked
+  const targetElement = e.target.closest('[data-track-event]');
+  if (!targetElement) return;
 
-    if (targetElement) {
-      // The dataset property conveniently collects all `data-*` attributes
-      const customData = { ...targetElement.dataset };
-      const eventName = customData.trackEvent; // e.g., 'cta_click', 'product_view'
-      console.log('Element clicked with tracking data:', customData);
-      // Remove the primary event name from the payload to avoid redundancy
-      delete customData.trackEvent;
+  const customData = { ...targetElement.dataset };
+  const eventName = customData.trackEvent || customData.track || customData.goal || 'click';
 
-      this.sendEvent(eventName, customData);
-    }
-  }
+  // Clean naming attributes from payload
+  delete customData.trackEvent;
+  delete customData.track;
+  delete customData.goal;
 
-  /**
-   * Tracks when a user leaves or returns to the page.
-   * @private
-   */
-  handleVisibilityChange() {
-    if (document.visibilityState === 'hidden') {
-      this.sendEvent('page_hidden', { duration_ms: Math.round(performance.now()) });
-    } else if (document.visibilityState === 'visible') {
-      this.sendEvent('page_visible');
-    }
+  console.log('Element clicked with tracking data:', { event: eventName, ...customData });
+  this.sendEvent(eventName, customData);
   }
 
   /**
@@ -101,20 +90,20 @@ class AnalyticsTracker {
       const blob = new Blob([JSON.stringify(eventData)], { type: 'application/json' });
       navigator.sendBeacon(this.apiEndpoint, blob);
     } else {
-      try {
-        await fetch(this.apiEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            // It's common to send a key as a bearer token for auth
-            'Authorization': `Bearer ${this.accessKey}`
-          },
-          body: JSON.stringify(eventData),
-          keepalive: true // Helps ensure the request completes on page navigation
-        });
-      } catch (error) {
-        console.error('Tracker API Error:', error);
-      }
+      // try {
+      //   await fetch(this.apiEndpoint, {
+      //     method: 'POST',
+      //     headers: {
+      //       'Content-Type': 'application/json',
+      //       // It's common to send a key as a bearer token for auth
+      //       'Authorization': `Bearer ${this.accessKey}`
+      //     },
+      //     body: JSON.stringify(eventData),
+      //     keepalive: true // Helps ensure the request completes on page navigation
+      //   });
+      // } catch (error) {
+      //   console.error('Tracker API Error:', error);
+      // }
     }
   }
 
@@ -129,10 +118,7 @@ class AnalyticsTracker {
     console.log("Analytics tracking started.");
     // Use capture: true to catch events early in the propagation phase
     document.addEventListener('click', this.handleGlobalClick, { capture: true });
-    document.addEventListener('visibilitychange', this.handleVisibilityChange);
     this.isTracking = true;
-    // Track the initial page view
-    this.sendEvent('page_view');
   }
 
   /**
@@ -144,7 +130,6 @@ class AnalyticsTracker {
     }
     console.log("Analytics tracking stopped.");
     document.removeEventListener('click', this.handleGlobalClick, { capture: true });
-    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     this.isTracking = false;
   }
 }
