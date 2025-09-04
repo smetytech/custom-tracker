@@ -21,7 +21,7 @@ class s {
     const i = e.target.closest("[data-track-event]");
     if (i) {
       const t = { ...i.dataset }, n = t.trackEvent;
-      delete t.trackEvent, this.sendEvent(n, t);
+      console.log("Element clicked with tracking data:", t), delete t.trackEvent, this.sendEvent(n, t);
     }
   }
   /**

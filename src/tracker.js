@@ -41,7 +41,7 @@ class AnalyticsTracker {
       // The dataset property conveniently collects all `data-*` attributes
       const customData = { ...targetElement.dataset };
       const eventName = customData.trackEvent; // e.g., 'cta_click', 'product_view'
-      
+      console.log('Element clicked with tracking data:', customData);
       // Remove the primary event name from the payload to avoid redundancy
       delete customData.trackEvent;
 
