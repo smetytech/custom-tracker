@@ -1,0 +1,107 @@
+name: Build and Publish Tracker (jsDelivr)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'vite.config.js'
+      - 'package.json'
+      - '.github/workflows/cdn-publish.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # need write to push cdn branch & tags
+  id-token: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need full history for tags
+
+      - name: Use Node.js (LTS)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build library
+        run: npm run build
+
+      - name: Show build output
+        run: ls -l dist
+
+      - name: Extract version
+        id: vars
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $VERSION"
+
+      - name: Publish dist to cdn branch for jsDelivr
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
+        run: |
+          set -e
+          git fetch origin cdn || true
+          # Create worktree for cleaner branch manipulation
+          rm -rf cdn-worktree
+          if git show-ref --verify --quiet refs/heads/cdn; then
+            echo "cdn branch exists"
+          else
+            echo "Creating orphan cdn branch"
+            git branch cdn || git checkout --orphan cdn && git reset --hard
+          fi
+          git worktree add cdn-worktree cdn || true
+          rsync -a --delete dist/ cdn-worktree/ # root level files
+          mkdir -p cdn-worktree/v$VERSION
+          rsync -a dist/ cdn-worktree/v$VERSION/
+          cd cdn-worktree
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          if [[ -n $(git status --porcelain) ]]; then
+            git add .
+            git commit -m "Publish dist for version $VERSION" || true
+            git push origin cdn
+          else
+            echo "No changes to commit on cdn branch"
+          fi
+          cd ..
+          git worktree remove cdn-worktree --force
+
+      - name: Create version tag (if missing)
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
+        run: |
+          git fetch --tags
+            if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+              echo "Tag v$VERSION already exists"
+            else
+              git tag v$VERSION
+              git push origin v$VERSION
+            fi
+
+      - name: jsDelivr URLs
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
+        run: |
+          REPO=${{ github.repository }}
+          echo "Latest (branch): https://cdn.jsdelivr.net/gh/$REPO@cdn/tracker.umd.js"
+          echo "Versioned (tag): https://cdn.jsdelivr.net/gh/$REPO@v$VERSION/tracker.umd.js"
+          echo "Versioned (folder on branch): https://cdn.jsdelivr.net/gh/$REPO@cdn/v$VERSION/tracker.umd.js"
+
+# Usage examples (replace OWNER/REPO):
+# <script src="https://cdn.jsdelivr.net/gh/OWNER/REPO@cdn/tracker.umd.js"></script>
+# Locked version (tag):
+# <script src="https://cdn.jsdelivr.net/gh/OWNER/REPO@v1.0.0/tracker.umd.js"></script>
+# Locked version (folder in cdn branch):
+# <script src="https://cdn.jsdelivr.net/gh/OWNER/REPO@cdn/v1.0.0/tracker.umd.js"></script>
+
+# Cache control: jsDelivr caches aggressively; bump version (package.json) to invalidate.
