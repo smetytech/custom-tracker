@@ -1,7 +1,6 @@
-const p = "https://smetylytics.vercel.app/api/events";
-class w {
+class p {
   constructor(t) {
-    this.endpoint = t.endpoint ?? p, this.headers = {
+    this.endpoint = t.endpoint, this.headers = {
       "Content-Type": "application/json",
       "X-API-Key": t.apiKey,
       ...t.headers
@@ -35,10 +34,10 @@ class w {
     }
   }
 }
-function k(e) {
-  return new w(e);
+function w(e) {
+  return new p(e);
 }
-function v(e) {
+function k(e) {
   const t = /* @__PURE__ */ new Set();
   return {
     canTrack: () => {
@@ -65,16 +64,16 @@ function v(e) {
     }
   };
 }
-const y = {
+const v = {
   canTrack: () => !0,
   onUpdate: () => {
   },
   clearCallbacks: () => {
   }
-}, S = ["[data-track-event]", "[data-track]", "[data-goal]"];
-class C {
+}, y = ["[data-track-event]", "[data-track]", "[data-goal]"];
+class S {
   constructor(t) {
-    this.name = "clicks", this.tracker = null, this.selectors = (t == null ? void 0 : t.selectors) ?? S, this.handleClick = this.handleGlobalClick.bind(this);
+    this.name = "clicks", this.tracker = null, this.selectors = (t == null ? void 0 : t.selectors) ?? y, this.handleClick = this.handleGlobalClick.bind(this);
   }
   start(t) {
     this.tracker = t, document.addEventListener("click", this.handleClick, { capture: !0 });
@@ -96,10 +95,10 @@ class C {
     });
   }
 }
-function T(e) {
-  return new C(e);
+function C(e) {
+  return new S(e);
 }
-class E {
+class T {
   constructor(t) {
     this.name = "pageViews", this.tracker = null, this.originalPushState = null, this.originalReplaceState = null, this.trackOnLoad = (t == null ? void 0 : t.trackOnLoad) ?? !0, this.trackHashChanges = (t == null ? void 0 : t.trackHashChanges) ?? !1, this.handlePopState = this.trackPageView.bind(this), this.handleHashChange = this.trackPageView.bind(this), this.handleLoad = this.trackPageView.bind(this);
   }
@@ -144,17 +143,17 @@ class E {
     });
   }
 }
-function L(e) {
-  return new E(e);
+function E(e) {
+  return new T(e);
 }
-function P() {
+function L() {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   } catch {
     return "unknown";
   }
 }
-function H() {
+function P() {
   const e = navigator;
   return e.connection ? {
     effectiveType: e.connection.effectiveType ?? "unknown",
@@ -163,7 +162,7 @@ function H() {
     saveData: e.connection.saveData ?? null
   } : null;
 }
-function I() {
+function H() {
   const e = performance;
   return e.memory ? {
     usedJSHeapSize: e.memory.usedJSHeapSize ?? null,
@@ -216,7 +215,7 @@ function h() {
     referrer: document.referrer || null,
     language: navigator.language,
     languages: [...navigator.languages],
-    timeZone: P(),
+    timeZone: L(),
     userAgent: navigator.userAgent,
     platform: navigator.platform,
     cookieEnabled: navigator.cookieEnabled,
@@ -234,20 +233,20 @@ function h() {
       width: window.innerWidth,
       height: window.innerHeight
     },
-    connection: H(),
-    memory: I(),
+    connection: P(),
+    memory: H(),
     utm: b(),
     geolocation: c
   };
 }
-async function U() {
+async function R() {
   return await m(), h();
 }
 const u = 10, d = 5e3, g = "analytics_session_id";
 function f() {
   return typeof crypto < "u" && typeof crypto.randomUUID == "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
 }
-function _() {
+function I() {
   if (typeof sessionStorage > "u")
     return f();
   const e = sessionStorage.getItem(g);
@@ -256,18 +255,18 @@ function _() {
   const t = f();
   return sessionStorage.setItem(g, t), t;
 }
-class R {
+class _ {
   constructor(t) {
     this.eventQueue = [], this.collectors = [], this.isRunning = !1, this.flushTimer = null, this.contextCached = null, this.config = {
       batchSize: u,
       flushInterval: d,
       geolocation: !1,
       ...t
-    }, this.sessionId = _(), this.transport = k({
+    }, this.sessionId = I(), this.transport = w({
       apiKey: this.config.apiKey,
       endpoint: this.config.endpoint,
       useBeacon: !1
-    }), this.consentManager = this.config.consent ? v(this.config.consent) : y, this.setupConsentListener();
+    }), this.consentManager = this.config.consent ? k(this.config.consent) : v, this.setupConsentListener();
   }
   setupConsentListener() {
     this.consentManager.onUpdate((t) => {
@@ -329,7 +328,7 @@ class R {
   }
   initializeCollectors() {
     const t = this.config.collectors ?? ["pageViews", "clicks"];
-    t.includes("pageViews") && this.collectors.push(L()), t.includes("clicks") && this.collectors.push(T()), this.collectors.forEach((n) => n.start(this));
+    t.includes("pageViews") && this.collectors.push(E()), t.includes("clicks") && this.collectors.push(C()), this.collectors.forEach((n) => n.start(this));
   }
   startFlushTimer() {
     this.stopFlushTimer(), this.flushTimer = setInterval(() => {
@@ -345,19 +344,19 @@ class R {
     });
   }
 }
-function D(e) {
-  return new R(e);
+function U(e) {
+  return new _(e);
 }
 export {
-  R as Tracker,
-  T as createClickCollector,
-  v as createConsentManager,
-  k as createHttpTransport,
-  L as createPageViewCollector,
-  D as createTracker,
-  y as defaultConsentManager,
+  _ as Tracker,
+  C as createClickCollector,
+  k as createConsentManager,
+  w as createHttpTransport,
+  E as createPageViewCollector,
+  U as createTracker,
+  v as defaultConsentManager,
   h as getBrowserContext,
-  U as getBrowserContextWithGeo,
+  R as getBrowserContextWithGeo,
   m as getGeolocation
 };
 //# sourceMappingURL=tracker.es.js.map
