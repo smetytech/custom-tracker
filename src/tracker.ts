@@ -66,6 +66,7 @@ export class Tracker implements TrackerPublicAPI {
     this.sessionId = getSessionId();
 
     this.transport = createHttpTransport({
+      apiKey: this.config.apiKey,
       endpoint: this.config.endpoint,
       useBeacon: false,
     });

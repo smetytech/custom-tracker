@@ -1,6 +1,7 @@
-import type { Transport, TrackEvent } from '../types';
+import type { Transport, TrackEvent } from "../types";
 export interface HttpTransportOptions {
-    endpoint: string;
+    apiKey: string;
+    endpoint?: string;
     headers?: Record<string, string>;
     useBeacon?: boolean;
 }

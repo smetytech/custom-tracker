@@ -62,7 +62,8 @@ export interface TrackEvent {
     context?: BrowserContext;
 }
 export interface TrackerConfig {
-    endpoint: string;
+    apiKey: string;
+    endpoint?: string;
     consent?: ConsentConfig;
     collectors?: CollectorType[];
     batchSize?: number;

@@ -66,6 +66,7 @@ export interface TrackEvent {
 }
 
 export interface TrackerConfig {
+  apiKey: string;
   endpoint: string;
   consent?: ConsentConfig;
   collectors?: CollectorType[];
