@@ -2,7 +2,7 @@ export interface ConsentConfig {
     canTrack: () => boolean | Promise<boolean>;
     onUpdate?: (callback: (granted: boolean) => void) => void;
 }
-export type CollectorType = "pageViews" | "clicks" | "screenViews" | "touch" | "lifecycle";
+export type CollectorType = "pageViews" | "clicks" | "sections" | "screenViews" | "touch" | "lifecycle";
 export interface BrowserContext {
     url: string;
     path: string;
@@ -91,7 +91,7 @@ export declare function isMobileContext(ctx: TrackingContext): ctx is MobileCont
  */
 export declare function isBrowserContext(ctx: TrackingContext): ctx is BrowserContext;
 export interface TrackEvent {
-    type: "page_view" | "click" | "custom" | "screen_view" | "app_lifecycle" | "touch";
+    type: "page_view" | "click" | "custom" | "screen_view" | "section_view" | "app_lifecycle" | "touch";
     name: string;
     properties: Record<string, unknown>;
     timestamp: string;

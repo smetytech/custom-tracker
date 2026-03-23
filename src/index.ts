@@ -3,6 +3,7 @@ import type { TrackerConfig, TrackerPublicAPI, PlatformAdapter } from "./types";
 import { getBrowserContext, getGeolocation } from "./collectors/context";
 import { createClickCollector } from "./collectors/clicks";
 import { createPageViewCollector } from "./collectors/page-views";
+import { createSectionCollector } from "./collectors/sections";
 
 // ─── Browser Session Management ─────────────────────────────────────────────
 
@@ -64,6 +65,9 @@ function createBrowserCollectors(config: TrackerConfig) {
   if (collectorTypes.includes("clicks")) {
     collectors.push(createClickCollector());
   }
+  if (collectorTypes.includes("sections")) {
+    collectors.push(createSectionCollector());
+  }
 
   return collectors;
 }
@@ -105,6 +109,7 @@ export type {
 export { createHttpTransport } from "./transports/http";
 export { createClickCollector } from "./collectors/clicks";
 export { createPageViewCollector } from "./collectors/page-views";
+export { createSectionCollector } from "./collectors/sections";
 export {
   getBrowserContext,
   getBrowserContextWithGeo,

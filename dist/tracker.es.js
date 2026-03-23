@@ -1,4 +1,4 @@
-class m {
+class w {
   constructor(t) {
     this.endpoint = t.endpoint, this.headers = {
       "Content-Type": "application/json",
@@ -8,135 +8,135 @@ class m {
   }
   async send(t) {
     if (t.length === 0) return;
-    const n = { events: t };
+    const e = { events: t };
     if (this.useBeacon && typeof navigator.sendBeacon == "function") {
-      this.sendWithBeacon(n);
+      this.sendWithBeacon(e);
       return;
     }
-    await this.sendWithFetch(n);
+    await this.sendWithFetch(e);
   }
   sendWithBeacon(t) {
     if (typeof Blob > "u" || typeof (navigator == null ? void 0 : navigator.sendBeacon) != "function") {
       this.sendWithFetch(t);
       return;
     }
-    const n = new Blob([JSON.stringify(t)], {
+    const e = new Blob([JSON.stringify(t)], {
       type: "application/json"
     });
-    navigator.sendBeacon(this.endpoint, n);
+    navigator.sendBeacon(this.endpoint, e);
   }
   async sendWithFetch(t) {
     try {
-      const n = typeof navigator < "u" && navigator.product === "ReactNative";
+      const e = typeof navigator < "u" && navigator.product === "ReactNative";
       await fetch(this.endpoint, {
         method: "POST",
         headers: this.headers,
         body: JSON.stringify(t),
-        ...n ? {} : { keepalive: !0 }
+        ...e ? {} : { keepalive: !0 }
       });
-    } catch (n) {
-      console.warn("Analytics tracking failed:", n);
+    } catch (e) {
+      console.warn("Analytics tracking failed:", e);
     }
   }
 }
-function w(e) {
-  return new m(e);
+function v(n) {
+  return new w(n);
 }
-function k(e) {
+function S(n) {
   const t = /* @__PURE__ */ new Set();
-  return e != null && e.onUpdate && e.onUpdate((o) => {
-    t.forEach((s) => {
+  return n != null && n.onUpdate && n.onUpdate((r) => {
+    t.forEach((a) => {
       try {
-        s(o);
+        a(r);
       } catch {
       }
     });
   }), {
     canTrack: () => {
-      if (!e)
+      if (!n)
         return !0;
       try {
-        return e.canTrack();
+        return n.canTrack();
       } catch {
         return !1;
       }
     },
-    onUpdate: (o) => {
-      t.add(o);
+    onUpdate: (r) => {
+      t.add(r);
     },
     clearCallbacks: () => {
       t.clear();
     }
   };
 }
-const v = {
+const k = {
   canTrack: () => !0,
   onUpdate: () => {
   },
   clearCallbacks: () => {
   }
 }, h = 10, u = 5e3;
-class S {
-  constructor(t, n) {
+class y {
+  constructor(t, e) {
     this.eventQueue = [], this.collectors = [], this.isRunning = !1, this.flushTimer = null, this.contextCached = null, this.sessionId = null, this.externalCollectors = [], this.backgroundCleanup = null, this.config = {
       batchSize: h,
       flushInterval: u,
       geolocation: !1,
       ...t
-    }, this.externalCollectors = n ?? [], this.platformAdapter = this.config.platform ?? {
+    }, this.externalCollectors = e ?? [], this.platformAdapter = this.config.platform ?? {
       getContext: () => ({}),
       getSessionId: () => "no-session"
-    }, this.transport = w({
+    }, this.transport = v({
       apiKey: this.config.apiKey,
       endpoint: this.config.endpoint,
       useBeacon: !1
-    }), this.consentManager = this.config.consent ? k(this.config.consent) : v, this.setupConsentListener();
+    }), this.consentManager = this.config.consent ? S(this.config.consent) : k, this.setupConsentListener();
   }
   setupConsentListener() {
     this.consentManager.onUpdate((t) => {
       t && !this.isRunning ? this.start() : !t && this.isRunning && this.stop();
     });
   }
-  track(t, n = {}, i) {
+  track(t, e = {}, i) {
     this.trackEvent(
       {
         type: "custom",
         name: t,
-        properties: n,
+        properties: e,
         timestamp: (/* @__PURE__ */ new Date()).toISOString()
       },
       i
     );
   }
-  trackEvent(t, n) {
+  trackEvent(t, e) {
     if (!this.isRunning) return;
-    const i = this.consentManager.canTrack(), a = (o) => {
-      if (!o || !this.isRunning) return;
-      let s = { ...t };
+    const i = this.consentManager.canTrack(), s = (r) => {
+      if (!r || !this.isRunning) return;
+      let a = { ...t };
       if (this.config.onBeforeSend) {
-        const c = this.config.onBeforeSend(s);
-        if (!c) return;
-        s = { ...c };
+        const o = this.config.onBeforeSend(a);
+        if (!o) return;
+        a = { ...o };
       }
-      (s.type === "page_view" || s.type === "screen_view") && (this.contextCached = this.platformAdapter.getContext()), s.context = this.contextCached ?? this.platformAdapter.getContext(), s.sessionId = this.sessionId ?? void 0, n && (s.userId = n), this.eventQueue.push(s), this.eventQueue.length >= (this.config.batchSize ?? h) && this.flush();
+      (a.type === "page_view" || a.type === "screen_view") && (this.contextCached = this.platformAdapter.getContext()), a.context = this.contextCached ?? this.platformAdapter.getContext(), a.sessionId = this.sessionId ?? void 0, e && (a.userId = e), this.eventQueue.push(a), this.eventQueue.length >= (this.config.batchSize ?? h) && this.flush();
     };
-    i instanceof Promise ? i.then(a).catch(() => {
-    }) : a(i);
+    i instanceof Promise ? i.then(s).catch(() => {
+    }) : s(i);
   }
   start() {
     if (this.isRunning) return;
-    const t = this.consentManager.canTrack(), n = (i) => {
+    const t = this.consentManager.canTrack(), e = (i) => {
       if (!i) return;
       this.isRunning = !0;
-      const a = this.platformAdapter.getSessionId();
-      a instanceof Promise ? a.then((o) => {
-        this.sessionId = o, this.postSessionInit();
+      const s = this.platformAdapter.getSessionId();
+      s instanceof Promise ? s.then((r) => {
+        this.sessionId = r, this.postSessionInit();
       }).catch(() => {
         this.sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`, this.postSessionInit();
-      }) : (this.sessionId = a, this.postSessionInit());
+      }) : (this.sessionId = s, this.postSessionInit());
     };
-    t instanceof Promise ? t.then(n).catch(() => {
-    }) : n(t);
+    t instanceof Promise ? t.then(e).catch(() => {
+    }) : e(t);
   }
   /**
    * Called after session ID is resolved. Initializes context, collectors,
@@ -148,8 +148,8 @@ class S {
   // FIX #5: Capture context reference before await to prevent writing to stale/replaced context
   async requestGeolocation() {
     if (!this.platformAdapter.getGeolocation) return;
-    const t = this.contextCached, n = await this.platformAdapter.getGeolocation();
-    n && t && t === this.contextCached && (t.geolocation = n);
+    const t = this.contextCached, e = await this.platformAdapter.getGeolocation();
+    e && t && t === this.contextCached && (t.geolocation = e);
   }
   // FIX #10: Return Promise from stop() so callers can await the final flush
   stop() {
@@ -164,8 +164,8 @@ class S {
     this.eventQueue = [];
     try {
       await this.transport.send(t);
-    } catch (n) {
-      this.config.onError && t[0] && this.config.onError(n, t[0]);
+    } catch (e) {
+      this.config.onError && t[0] && this.config.onError(e, t[0]);
     }
   }
   initializeCollectors() {
@@ -188,57 +188,57 @@ class S {
     }));
   }
 }
-function y() {
+function b() {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   } catch {
     return "unknown";
   }
 }
+function E() {
+  const n = navigator;
+  return n.connection ? {
+    effectiveType: n.connection.effectiveType ?? "unknown",
+    downlink: n.connection.downlink ?? null,
+    rtt: n.connection.rtt ?? null,
+    saveData: n.connection.saveData ?? null
+  } : null;
+}
 function C() {
-  const e = navigator;
-  return e.connection ? {
-    effectiveType: e.connection.effectiveType ?? "unknown",
-    downlink: e.connection.downlink ?? null,
-    rtt: e.connection.rtt ?? null,
-    saveData: e.connection.saveData ?? null
+  const n = performance;
+  return n.memory ? {
+    usedJSHeapSize: n.memory.usedJSHeapSize ?? null,
+    totalJSHeapSize: n.memory.totalJSHeapSize ?? null,
+    jsHeapSizeLimit: n.memory.jsHeapSizeLimit ?? null
   } : null;
 }
 function T() {
-  const e = performance;
-  return e.memory ? {
-    usedJSHeapSize: e.memory.usedJSHeapSize ?? null,
-    totalJSHeapSize: e.memory.totalJSHeapSize ?? null,
-    jsHeapSizeLimit: e.memory.jsHeapSizeLimit ?? null
-  } : null;
-}
-function E() {
-  const e = new URLSearchParams(window.location.search);
+  const n = new URLSearchParams(window.location.search);
   return {
-    source: e.get("utm_source"),
-    medium: e.get("utm_medium"),
-    campaign: e.get("utm_campaign"),
-    term: e.get("utm_term"),
-    content: e.get("utm_content")
+    source: n.get("utm_source"),
+    medium: n.get("utm_medium"),
+    campaign: n.get("utm_campaign"),
+    term: n.get("utm_term"),
+    content: n.get("utm_content")
   };
 }
-let r = null, l = null;
-async function f() {
-  return r !== null ? r : l || (l = new Promise((e) => {
+let c = null, l = null;
+async function g() {
+  return c !== null ? c : l || (l = new Promise((n) => {
     if (!navigator.geolocation) {
-      e(null);
+      n(null);
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (t) => {
-        r = {
+        c = {
           latitude: t.coords.latitude,
           longitude: t.coords.longitude,
           accuracy: t.coords.accuracy
-        }, e(r);
+        }, n(c);
       },
       () => {
-        e(null);
+        n(null);
       },
       {
         enableHighAccuracy: !1,
@@ -248,8 +248,8 @@ async function f() {
     );
   }), l);
 }
-function p() {
-  var e;
+function m() {
+  var n;
   return {
     url: window.location.href,
     path: window.location.pathname,
@@ -257,7 +257,7 @@ function p() {
     referrer: document.referrer || null,
     language: navigator.language,
     languages: [...navigator.languages],
-    timeZone: y(),
+    timeZone: b(),
     userAgent: navigator.userAgent,
     platform: navigator.platform,
     cookieEnabled: navigator.cookieEnabled,
@@ -269,25 +269,25 @@ function p() {
       availHeight: window.screen.availHeight,
       pixelRatio: window.devicePixelRatio,
       colorDepth: window.screen.colorDepth,
-      orientation: ((e = window.screen.orientation) == null ? void 0 : e.type) ?? null
+      orientation: ((n = window.screen.orientation) == null ? void 0 : n.type) ?? null
     },
     viewport: {
       width: window.innerWidth,
       height: window.innerHeight
     },
-    connection: C(),
-    memory: T(),
-    utm: E(),
-    geolocation: r
+    connection: E(),
+    memory: C(),
+    utm: T(),
+    geolocation: c
   };
 }
-async function _() {
-  return await f(), p();
+async function M() {
+  return await g(), m();
 }
-const b = ["[data-track-event]", "[data-track]", "[data-goal]"];
-class I {
+const L = ["[data-track-event]", "[data-track]", "[data-goal]"];
+class A {
   constructor(t) {
-    this.name = "clicks", this.tracker = null, this.selectors = (t == null ? void 0 : t.selectors) ?? b, this.handleClick = this.handleGlobalClick.bind(this);
+    this.name = "clicks", this.tracker = null, this.selectors = (t == null ? void 0 : t.selectors) ?? L, this.handleClick = this.handleGlobalClick.bind(this);
   }
   start(t) {
     this.tracker = t, document.addEventListener("click", this.handleClick, { capture: !0 });
@@ -296,23 +296,23 @@ class I {
     document.removeEventListener("click", this.handleClick, { capture: !0 }), this.tracker = null;
   }
   handleGlobalClick(t) {
-    const n = t.target instanceof Element ? t.target.closest(this.selectors.join(", ")) : null;
-    if (!n || !this.tracker) return;
-    const i = n.dataset, a = i.trackEvent || i.track || i.goal || "click", o = {};
-    for (const [s, c] of Object.entries(i))
-      ["trackEvent", "track", "goal"].includes(s) || (o[s] = c);
+    const e = t.target instanceof Element ? t.target.closest(this.selectors.join(", ")) : null;
+    if (!e || !this.tracker) return;
+    const i = e.dataset, s = i.trackEvent || i.track || i.goal || "click", r = {};
+    for (const [a, o] of Object.entries(i))
+      ["trackEvent", "track", "goal"].includes(a) || (r[a] = o);
     this.tracker.trackEvent({
       type: "click",
-      name: a,
-      properties: o,
+      name: s,
+      properties: r,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
   }
 }
-function L(e) {
-  return new I(e);
+function P(n) {
+  return new A(n);
 }
-class P {
+class I {
   constructor(t) {
     this.name = "pageViews", this.tracker = null, this.originalPushState = null, this.originalReplaceState = null, this.trackOnLoad = (t == null ? void 0 : t.trackOnLoad) ?? !0, this.trackHashChanges = (t == null ? void 0 : t.trackHashChanges) ?? !1, this.handlePopState = this.trackPageView.bind(this), this.handleHashChange = this.trackPageView.bind(this), this.handleLoad = this.trackPageView.bind(this);
   }
@@ -324,10 +324,10 @@ class P {
   }
   patchHistory() {
     const t = this;
-    this.originalPushState = history.pushState, this.originalReplaceState = history.replaceState, history.pushState = function(n, i, a) {
-      t.originalPushState.call(this, n, i, a), t.trackPageView();
-    }, history.replaceState = function(n, i, a) {
-      t.originalReplaceState.call(this, n, i, a), t.trackPageView();
+    this.originalPushState = history.pushState, this.originalReplaceState = history.replaceState, history.pushState = function(e, i, s) {
+      t.originalPushState.call(this, e, i, s), t.trackPageView();
+    }, history.replaceState = function(e, i, s) {
+      t.originalReplaceState.call(this, e, i, s), t.trackPageView();
     };
   }
   unpatchHistory() {
@@ -335,7 +335,7 @@ class P {
   }
   trackPageView() {
     if (!this.tracker) return;
-    const t = new URLSearchParams(window.location.search), n = {
+    const t = new URLSearchParams(window.location.search), e = {
       source: t.get("utm_source"),
       medium: t.get("utm_medium"),
       campaign: t.get("utm_campaign"),
@@ -351,71 +351,165 @@ class P {
         query: window.location.search || null,
         referrer: document.referrer || null,
         title: document.title,
-        utm: n
+        utm: e
       },
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
   }
 }
-function H(e) {
-  return new P(e);
+function R(n) {
+  return new I(n);
 }
-function R(e) {
-  const t = e.platform;
+const H = "data-track-section", O = 0.5, _ = 1e3;
+class D {
+  constructor(t) {
+    this.name = "sections", this.tracker = null, this.observer = null, this.mutationObserver = null, this.sections = /* @__PURE__ */ new Map(), this.originalPushState = null, this.handlePopState = null, this.attribute = (t == null ? void 0 : t.attribute) ?? H, this.threshold = (t == null ? void 0 : t.threshold) ?? O, this.minDwellTime = (t == null ? void 0 : t.minDwellTime) ?? _, this.allowReentry = (t == null ? void 0 : t.allowReentry) ?? !1;
+  }
+  start(t) {
+    this.tracker = t, this.observer = new IntersectionObserver(
+      (e) => this.handleIntersections(e),
+      { threshold: this.threshold }
+    ), this.observeExistingSections(), this.mutationObserver = new MutationObserver((e) => {
+      this.handleMutations(e);
+    }), this.mutationObserver.observe(document.body, {
+      childList: !0,
+      subtree: !0
+    }), this.setupNavigationListener();
+  }
+  stop() {
+    this.flushVisibleSections(), this.observer && (this.observer.disconnect(), this.observer = null), this.mutationObserver && (this.mutationObserver.disconnect(), this.mutationObserver = null), this.teardownNavigationListener(), this.sections.clear(), this.tracker = null;
+  }
+  observeExistingSections() {
+    document.querySelectorAll(`[${this.attribute}]`).forEach((e) => this.observeElement(e));
+  }
+  observeElement(t) {
+    !this.observer || this.sections.has(t) || (this.sections.set(t, { enteredAt: null, fired: !1 }), this.observer.observe(t));
+  }
+  unobserveElement(t) {
+    if (!this.observer) return;
+    const e = this.sections.get(t);
+    (e == null ? void 0 : e.enteredAt) !== null && this.recordSectionView(t, e), this.observer.unobserve(t), this.sections.delete(t);
+  }
+  handleMutations(t) {
+    for (const e of t) {
+      for (const i of e.addedNodes)
+        i instanceof Element && (i.hasAttribute(this.attribute) && this.observeElement(i), i.querySelectorAll(`[${this.attribute}]`).forEach((r) => this.observeElement(r)));
+      for (const i of e.removedNodes)
+        i instanceof Element && (i.hasAttribute(this.attribute) && this.unobserveElement(i), i.querySelectorAll(`[${this.attribute}]`).forEach((r) => this.unobserveElement(r)));
+    }
+  }
+  handleIntersections(t) {
+    for (const e of t) {
+      const i = this.sections.get(e.target);
+      i && (e.isIntersecting ? i.enteredAt === null && (!i.fired || this.allowReentry) && (i.enteredAt = Date.now()) : i.enteredAt !== null && this.recordSectionView(e.target, i));
+    }
+  }
+  recordSectionView(t, e) {
+    if (!this.tracker || e.enteredAt === null) return;
+    const i = Date.now() - e.enteredAt;
+    if (e.enteredAt = null, i < this.minDwellTime) return;
+    e.fired = !0;
+    const s = t.getAttribute(this.attribute) || "unnamed", r = {
+      section: s,
+      dwellTime: i,
+      url: window.location.href,
+      path: window.location.pathname
+    }, a = t.dataset;
+    for (const [o, p] of Object.entries(a))
+      o !== "trackSection" && (r[o] = p);
+    this.tracker.trackEvent({
+      type: "section_view",
+      name: s,
+      properties: r,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
+  /**
+   * Flush any sections that are currently visible (e.g., on stop() or page unload).
+   */
+  flushVisibleSections() {
+    for (const [t, e] of this.sections)
+      e.enteredAt !== null && this.recordSectionView(t, e);
+  }
+  /**
+   * Reset tracking state on SPA navigation so sections on the new page
+   * are tracked fresh.
+   */
+  resetOnNavigation() {
+    this.flushVisibleSections();
+    for (const [, t] of this.sections)
+      t.enteredAt = null, t.fired = !1;
+  }
+  setupNavigationListener() {
+    const t = this;
+    this.originalPushState = history.pushState, history.pushState = function(e, i, s) {
+      t.originalPushState.call(this, e, i, s), t.resetOnNavigation();
+    }, this.handlePopState = () => this.resetOnNavigation(), window.addEventListener("popstate", this.handlePopState);
+  }
+  teardownNavigationListener() {
+    this.originalPushState && (history.pushState = this.originalPushState, this.originalPushState = null), this.handlePopState && (window.removeEventListener("popstate", this.handlePopState), this.handlePopState = null);
+  }
+}
+function B(n) {
+  return new D(n);
+}
+function x(n) {
+  const t = n.platform;
   return t === "ios" || t === "android";
 }
-function D(e) {
-  return !R(e);
+function F(n) {
+  return !x(n);
 }
 const d = "analytics_session_id";
-function g() {
+function f() {
   return typeof crypto < "u" && typeof crypto.randomUUID == "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
 }
-function B() {
+function U() {
   if (typeof sessionStorage > "u")
-    return g();
-  const e = sessionStorage.getItem(d);
-  if (e)
-    return e;
-  const t = g();
+    return f();
+  const n = sessionStorage.getItem(d);
+  if (n)
+    return n;
+  const t = f();
   return sessionStorage.setItem(d, t), t;
 }
-function x() {
+function V() {
   return {
-    getContext: p,
-    getSessionId: B,
-    getGeolocation: f,
-    onBackground: (e) => {
+    getContext: m,
+    getSessionId: U,
+    getGeolocation: g,
+    onBackground: (n) => {
       const t = () => {
-        document.visibilityState === "hidden" && e();
+        document.visibilityState === "hidden" && n();
       };
       return window.addEventListener("visibilitychange", t), () => window.removeEventListener("visibilitychange", t);
     }
   };
 }
-function A(e) {
-  const t = e.collectors ?? ["pageViews", "clicks"], n = [];
-  return t.includes("pageViews") && n.push(H()), t.includes("clicks") && n.push(L()), n;
+function N(n) {
+  const t = n.collectors ?? ["pageViews", "clicks"], e = [];
+  return t.includes("pageViews") && e.push(R()), t.includes("clicks") && e.push(P()), t.includes("sections") && e.push(B()), e;
 }
-function U(e) {
+function G(n) {
   const t = {
-    ...e,
-    platform: e.platform ?? x()
-  }, n = A(e);
-  return new S(t, n);
+    ...n,
+    platform: n.platform ?? V()
+  }, e = N(n);
+  return new y(t, e);
 }
 export {
-  S as Tracker,
-  L as createClickCollector,
-  k as createConsentManager,
-  w as createHttpTransport,
-  H as createPageViewCollector,
-  U as createTracker,
-  v as defaultConsentManager,
-  p as getBrowserContext,
-  _ as getBrowserContextWithGeo,
-  f as getGeolocation,
-  D as isBrowserContext,
-  R as isMobileContext
+  y as Tracker,
+  P as createClickCollector,
+  S as createConsentManager,
+  v as createHttpTransport,
+  R as createPageViewCollector,
+  B as createSectionCollector,
+  G as createTracker,
+  k as defaultConsentManager,
+  m as getBrowserContext,
+  M as getBrowserContextWithGeo,
+  g as getGeolocation,
+  F as isBrowserContext,
+  x as isMobileContext
 };
 //# sourceMappingURL=tracker.es.js.map

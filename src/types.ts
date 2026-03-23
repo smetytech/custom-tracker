@@ -6,6 +6,7 @@ export interface ConsentConfig {
 export type CollectorType =
   | "pageViews"
   | "clicks"
+  | "sections"
   | "screenViews"
   | "touch"
   | "lifecycle";
@@ -108,7 +109,7 @@ export function isBrowserContext(ctx: TrackingContext): ctx is BrowserContext {
 }
 
 export interface TrackEvent {
-  type: "page_view" | "click" | "custom" | "screen_view" | "app_lifecycle" | "touch";
+  type: "page_view" | "click" | "custom" | "screen_view" | "section_view" | "app_lifecycle" | "touch";
   name: string;
   properties: Record<string, unknown>;
   timestamp: string;
