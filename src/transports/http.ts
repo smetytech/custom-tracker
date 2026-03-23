@@ -36,6 +36,12 @@ export class HttpTransport implements Transport {
   }
 
   private sendWithBeacon(payload: { events: TrackEvent[] }): void {
+    // Guard: sendBeacon and Blob may not be available in React Native
+    if (typeof Blob === "undefined" || typeof navigator?.sendBeacon !== "function") {
+      void this.sendWithFetch(payload);
+      return;
+    }
+
     const blob = new Blob([JSON.stringify(payload)], {
       type: "application/json",
     });
@@ -46,11 +52,15 @@ export class HttpTransport implements Transport {
     events: TrackEvent[];
   }): Promise<void> {
     try {
+      // FIX #18: keepalive is not supported in React Native's fetch implementation
+      const isReactNative =
+        typeof navigator !== "undefined" && navigator.product === "ReactNative";
+
       await fetch(this.endpoint, {
         method: "POST",
         headers: this.headers,
         body: JSON.stringify(payload),
-        keepalive: true,
+        ...(isReactNative ? {} : { keepalive: true }),
       });
     } catch (error) {
       console.warn("Analytics tracking failed:", error);

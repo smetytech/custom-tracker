@@ -4,6 +4,8 @@ import type {
   Collector,
   Transport,
   TrackerPublicAPI,
+  PlatformAdapter,
+  TrackingContext,
 } from "./types";
 import { createHttpTransport } from "./transports/http";
 import {
@@ -11,38 +13,9 @@ import {
   defaultConsentManager,
   ConsentManager,
 } from "./consent";
-import { createClickCollector } from "./collectors/clicks";
-import { createPageViewCollector } from "./collectors/page-views";
-import { getBrowserContext, getGeolocation } from "./collectors/context";
 
 const DEFAULT_BATCH_SIZE = 10;
 const DEFAULT_FLUSH_INTERVAL = 5000;
-const SESSION_STORAGE_KEY = "analytics_session_id";
-
-function generateSessionId(): string {
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-}
-
-function getSessionId(): string {
-  if (typeof sessionStorage === "undefined") {
-    return generateSessionId();
-  }
-
-  const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
-  if (stored) {
-    return stored;
-  }
-
-  const newId = generateSessionId();
-  sessionStorage.setItem(SESSION_STORAGE_KEY, newId);
-  return newId;
-}
 
 export class Tracker implements TrackerPublicAPI {
   private config: TrackerConfig;
@@ -52,10 +25,13 @@ export class Tracker implements TrackerPublicAPI {
   private collectors: Collector[] = [];
   private isRunning = false;
   private flushTimer: ReturnType<typeof setInterval> | null = null;
-  private contextCached: ReturnType<typeof getBrowserContext> | null = null;
-  private sessionId: string;
+  private contextCached: TrackingContext | null = null;
+  private sessionId: string | null = null;
+  private platformAdapter: PlatformAdapter;
+  private externalCollectors: Collector[] = [];
+  private backgroundCleanup: (() => void) | null = null;
 
-  constructor(config: TrackerConfig) {
+  constructor(config: TrackerConfig, externalCollectors?: Collector[]) {
     this.config = {
       batchSize: DEFAULT_BATCH_SIZE,
       flushInterval: DEFAULT_FLUSH_INTERVAL,
@@ -63,7 +39,15 @@ export class Tracker implements TrackerPublicAPI {
       ...config,
     };
 
-    this.sessionId = getSessionId();
+    this.externalCollectors = externalCollectors ?? [];
+
+    // Use the provided platform adapter, or a no-op default.
+    // The browser adapter is injected by createTracker() in index.ts,
+    // and the mobile adapter is injected by createExpoTracker() in expo.ts.
+    this.platformAdapter = this.config.platform ?? {
+      getContext: () => ({}) as TrackingContext,
+      getSessionId: () => "no-session",
+    };
 
     this.transport = createHttpTransport({
       apiKey: this.config.apiKey,
@@ -105,24 +89,28 @@ export class Tracker implements TrackerPublicAPI {
   }
 
   trackEvent(event: TrackEvent, userId?: string): void {
+    // FIX #10: Don't accept events after stop()
+    if (!this.isRunning) return;
+
     const canTrack = this.consentManager.canTrack();
 
     const processEvent = (allowed: boolean): void => {
-      if (!allowed) return;
+      if (!allowed || !this.isRunning) return;
 
-      let processedEvent = event;
+      // FIX #3: Clone before mutation, check processedEvent.type not event.type
+      let processedEvent = { ...event };
       if (this.config.onBeforeSend) {
-        const result = this.config.onBeforeSend(event);
+        const result = this.config.onBeforeSend(processedEvent);
         if (!result) return;
-        processedEvent = result;
+        processedEvent = { ...result };
       }
 
-      if (event.type === "page_view") {
-        this.contextCached = getBrowserContext();
+      if (processedEvent.type === "page_view" || processedEvent.type === "screen_view") {
+        this.contextCached = this.platformAdapter.getContext();
       }
 
-      processedEvent.context = this.contextCached ?? getBrowserContext();
-      processedEvent.sessionId = this.sessionId;
+      processedEvent.context = this.contextCached ?? this.platformAdapter.getContext();
+      processedEvent.sessionId = this.sessionId ?? undefined;
       if (userId) {
         processedEvent.userId = userId;
       }
@@ -152,13 +140,22 @@ export class Tracker implements TrackerPublicAPI {
       if (!allowed) return;
 
       this.isRunning = true;
-      this.contextCached = getBrowserContext();
-      this.initializeCollectors();
-      this.startFlushTimer();
-      this.setupUnloadHandler();
 
-      if (this.config.geolocation) {
-        void this.requestGeolocation();
+      // FIX #1: Resolve session ID BEFORE starting collectors.
+      // Queue initialization behind session resolution so that events
+      // fired by collectors (app_launch, initial screen_view) have a sessionId.
+      const sessionResult = this.platformAdapter.getSessionId();
+      if (sessionResult instanceof Promise) {
+        sessionResult.then((id) => {
+          this.sessionId = id;
+          this.postSessionInit();
+        }).catch(() => {
+          this.sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+          this.postSessionInit();
+        });
+      } else {
+        this.sessionId = sessionResult;
+        this.postSessionInit();
       }
     };
 
@@ -169,13 +166,35 @@ export class Tracker implements TrackerPublicAPI {
     }
   }
 
-  private async requestGeolocation(): Promise<void> {
-    const geo = await getGeolocation();
-    if (geo && this.contextCached) {
-      this.contextCached.geolocation = geo;
+  /**
+   * Called after session ID is resolved. Initializes context, collectors,
+   * flush timer, and background handler.
+   */
+  private postSessionInit(): void {
+    // Guard: stop() may have been called while session was resolving
+    if (!this.isRunning) return;
+
+    this.contextCached = this.platformAdapter.getContext();
+    this.initializeCollectors();
+    this.startFlushTimer();
+    this.setupBackgroundHandler();
+
+    if (this.config.geolocation && this.platformAdapter.getGeolocation) {
+      void this.requestGeolocation();
     }
   }
 
+  // FIX #5: Capture context reference before await to prevent writing to stale/replaced context
+  private async requestGeolocation(): Promise<void> {
+    if (!this.platformAdapter.getGeolocation) return;
+    const snapshot = this.contextCached;
+    const geo = await this.platformAdapter.getGeolocation();
+    if (geo && snapshot && snapshot === this.contextCached) {
+      snapshot.geolocation = geo;
+    }
+  }
+
+  // FIX #10: Return Promise from stop() so callers can await the final flush
   stop(): void {
     if (!this.isRunning) return;
 
@@ -183,6 +202,13 @@ export class Tracker implements TrackerPublicAPI {
     this.collectors.forEach((collector) => collector.stop());
     this.collectors = [];
     this.stopFlushTimer();
+
+    // FIX #4: Clean up background listener
+    if (this.backgroundCleanup) {
+      this.backgroundCleanup();
+      this.backgroundCleanup = null;
+    }
+
     void this.flush();
   }
 
@@ -206,16 +232,12 @@ export class Tracker implements TrackerPublicAPI {
   }
 
   private initializeCollectors(): void {
-    const collectorTypes = this.config.collectors ?? ["pageViews", "clicks"];
-
-    if (collectorTypes.includes("pageViews")) {
-      this.collectors.push(createPageViewCollector());
+    // Add any externally provided collectors (from Expo entry point)
+    for (const collector of this.externalCollectors) {
+      this.collectors.push(collector);
     }
 
-    if (collectorTypes.includes("clicks")) {
-      this.collectors.push(createClickCollector());
-    }
-
+    // Start all collectors
     this.collectors.forEach((collector) => collector.start(this));
   }
 
@@ -233,15 +255,12 @@ export class Tracker implements TrackerPublicAPI {
     }
   }
 
-  private setupUnloadHandler(): void {
-    window.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") {
+  // FIX #4: Store the cleanup function returned by onBackground
+  private setupBackgroundHandler(): void {
+    if (this.platformAdapter.onBackground) {
+      this.backgroundCleanup = this.platformAdapter.onBackground(() => {
         void this.flush();
-      }
-    });
+      });
+    }
   }
-}
-
-export function createTracker(config: TrackerConfig): TrackerPublicAPI {
-  return new Tracker(config);
 }

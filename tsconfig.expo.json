@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2020"],
+    "composite": true
+  },
+  "include": [
+    "src/types.ts",
+    "src/tracker.ts",
+    "src/transports/**/*",
+    "src/consent/**/*",
+    "src/expo-globals.d.ts",
+    "src/expo-modules.d.ts",
+    "src/expo.ts",
+    "src/expo/**/*"
+  ]
+}

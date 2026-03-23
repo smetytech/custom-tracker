@@ -4,15 +4,17 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'AnalyticsTracker',
+      entry: resolve(__dirname, 'src/expo.ts'),
+      name: 'AnalyticsTrackerExpo',
       formats: ['umd', 'es'],
-      fileName: (format) => `tracker.${format}.js`,
+      fileName: (format) => `expo.${format}.js`,
     },
     minify: true,
     sourcemap: true,
+    // Don't clean the dist folder - the web build already placed files there
+    emptyOutDir: false,
     rollupOptions: {
-      // Mark all Expo/RN packages as external so they're not bundled in the web build
+      // All React Native and Expo packages are external (provided by the consuming app)
       external: [
         'react',
         'react-native',

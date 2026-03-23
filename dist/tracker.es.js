@@ -1,4 +1,4 @@
-class p {
+class m {
   constructor(t) {
     this.endpoint = t.endpoint, this.headers = {
       "Content-Type": "application/json",
@@ -16,6 +16,10 @@ class p {
     await this.sendWithFetch(n);
   }
   sendWithBeacon(t) {
+    if (typeof Blob > "u" || typeof (navigator == null ? void 0 : navigator.sendBeacon) != "function") {
+      this.sendWithFetch(t);
+      return;
+    }
     const n = new Blob([JSON.stringify(t)], {
       type: "application/json"
     });
@@ -23,11 +27,12 @@ class p {
   }
   async sendWithFetch(t) {
     try {
+      const n = typeof navigator < "u" && navigator.product === "ReactNative";
       await fetch(this.endpoint, {
         method: "POST",
         headers: this.headers,
         body: JSON.stringify(t),
-        keepalive: !0
+        ...n ? {} : { keepalive: !0 }
       });
     } catch (n) {
       console.warn("Analytics tracking failed:", n);
@@ -35,11 +40,18 @@ class p {
   }
 }
 function w(e) {
-  return new p(e);
+  return new m(e);
 }
 function k(e) {
   const t = /* @__PURE__ */ new Set();
-  return {
+  return e != null && e.onUpdate && e.onUpdate((o) => {
+    t.forEach((s) => {
+      try {
+        s(o);
+      } catch {
+      }
+    });
+  }), {
     canTrack: () => {
       if (!e)
         return !0;
@@ -49,15 +61,8 @@ function k(e) {
         return !1;
       }
     },
-    onUpdate: (r) => {
-      t.add(r), e != null && e.onUpdate && e.onUpdate((a) => {
-        t.forEach((o) => {
-          try {
-            o(a);
-          } catch {
-          }
-        });
-      });
+    onUpdate: (o) => {
+      t.add(o);
     },
     clearCallbacks: () => {
       t.clear();
@@ -70,10 +75,219 @@ const v = {
   },
   clearCallbacks: () => {
   }
-}, y = ["[data-track-event]", "[data-track]", "[data-goal]"];
+}, h = 10, u = 5e3;
 class S {
+  constructor(t, n) {
+    this.eventQueue = [], this.collectors = [], this.isRunning = !1, this.flushTimer = null, this.contextCached = null, this.sessionId = null, this.externalCollectors = [], this.backgroundCleanup = null, this.config = {
+      batchSize: h,
+      flushInterval: u,
+      geolocation: !1,
+      ...t
+    }, this.externalCollectors = n ?? [], this.platformAdapter = this.config.platform ?? {
+      getContext: () => ({}),
+      getSessionId: () => "no-session"
+    }, this.transport = w({
+      apiKey: this.config.apiKey,
+      endpoint: this.config.endpoint,
+      useBeacon: !1
+    }), this.consentManager = this.config.consent ? k(this.config.consent) : v, this.setupConsentListener();
+  }
+  setupConsentListener() {
+    this.consentManager.onUpdate((t) => {
+      t && !this.isRunning ? this.start() : !t && this.isRunning && this.stop();
+    });
+  }
+  track(t, n = {}, i) {
+    this.trackEvent(
+      {
+        type: "custom",
+        name: t,
+        properties: n,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      i
+    );
+  }
+  trackEvent(t, n) {
+    if (!this.isRunning) return;
+    const i = this.consentManager.canTrack(), a = (o) => {
+      if (!o || !this.isRunning) return;
+      let s = { ...t };
+      if (this.config.onBeforeSend) {
+        const c = this.config.onBeforeSend(s);
+        if (!c) return;
+        s = { ...c };
+      }
+      (s.type === "page_view" || s.type === "screen_view") && (this.contextCached = this.platformAdapter.getContext()), s.context = this.contextCached ?? this.platformAdapter.getContext(), s.sessionId = this.sessionId ?? void 0, n && (s.userId = n), this.eventQueue.push(s), this.eventQueue.length >= (this.config.batchSize ?? h) && this.flush();
+    };
+    i instanceof Promise ? i.then(a).catch(() => {
+    }) : a(i);
+  }
+  start() {
+    if (this.isRunning) return;
+    const t = this.consentManager.canTrack(), n = (i) => {
+      if (!i) return;
+      this.isRunning = !0;
+      const a = this.platformAdapter.getSessionId();
+      a instanceof Promise ? a.then((o) => {
+        this.sessionId = o, this.postSessionInit();
+      }).catch(() => {
+        this.sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`, this.postSessionInit();
+      }) : (this.sessionId = a, this.postSessionInit());
+    };
+    t instanceof Promise ? t.then(n).catch(() => {
+    }) : n(t);
+  }
+  /**
+   * Called after session ID is resolved. Initializes context, collectors,
+   * flush timer, and background handler.
+   */
+  postSessionInit() {
+    this.isRunning && (this.contextCached = this.platformAdapter.getContext(), this.initializeCollectors(), this.startFlushTimer(), this.setupBackgroundHandler(), this.config.geolocation && this.platformAdapter.getGeolocation && this.requestGeolocation());
+  }
+  // FIX #5: Capture context reference before await to prevent writing to stale/replaced context
+  async requestGeolocation() {
+    if (!this.platformAdapter.getGeolocation) return;
+    const t = this.contextCached, n = await this.platformAdapter.getGeolocation();
+    n && t && t === this.contextCached && (t.geolocation = n);
+  }
+  // FIX #10: Return Promise from stop() so callers can await the final flush
+  stop() {
+    this.isRunning && (this.isRunning = !1, this.collectors.forEach((t) => t.stop()), this.collectors = [], this.stopFlushTimer(), this.backgroundCleanup && (this.backgroundCleanup(), this.backgroundCleanup = null), this.flush());
+  }
+  isTracking() {
+    return this.isRunning;
+  }
+  async flush() {
+    if (this.eventQueue.length === 0) return;
+    const t = [...this.eventQueue];
+    this.eventQueue = [];
+    try {
+      await this.transport.send(t);
+    } catch (n) {
+      this.config.onError && t[0] && this.config.onError(n, t[0]);
+    }
+  }
+  initializeCollectors() {
+    for (const t of this.externalCollectors)
+      this.collectors.push(t);
+    this.collectors.forEach((t) => t.start(this));
+  }
+  startFlushTimer() {
+    this.stopFlushTimer(), this.flushTimer = setInterval(() => {
+      this.flush();
+    }, this.config.flushInterval ?? u);
+  }
+  stopFlushTimer() {
+    this.flushTimer && (clearInterval(this.flushTimer), this.flushTimer = null);
+  }
+  // FIX #4: Store the cleanup function returned by onBackground
+  setupBackgroundHandler() {
+    this.platformAdapter.onBackground && (this.backgroundCleanup = this.platformAdapter.onBackground(() => {
+      this.flush();
+    }));
+  }
+}
+function y() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return "unknown";
+  }
+}
+function C() {
+  const e = navigator;
+  return e.connection ? {
+    effectiveType: e.connection.effectiveType ?? "unknown",
+    downlink: e.connection.downlink ?? null,
+    rtt: e.connection.rtt ?? null,
+    saveData: e.connection.saveData ?? null
+  } : null;
+}
+function T() {
+  const e = performance;
+  return e.memory ? {
+    usedJSHeapSize: e.memory.usedJSHeapSize ?? null,
+    totalJSHeapSize: e.memory.totalJSHeapSize ?? null,
+    jsHeapSizeLimit: e.memory.jsHeapSizeLimit ?? null
+  } : null;
+}
+function E() {
+  const e = new URLSearchParams(window.location.search);
+  return {
+    source: e.get("utm_source"),
+    medium: e.get("utm_medium"),
+    campaign: e.get("utm_campaign"),
+    term: e.get("utm_term"),
+    content: e.get("utm_content")
+  };
+}
+let r = null, l = null;
+async function f() {
+  return r !== null ? r : l || (l = new Promise((e) => {
+    if (!navigator.geolocation) {
+      e(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (t) => {
+        r = {
+          latitude: t.coords.latitude,
+          longitude: t.coords.longitude,
+          accuracy: t.coords.accuracy
+        }, e(r);
+      },
+      () => {
+        e(null);
+      },
+      {
+        enableHighAccuracy: !1,
+        timeout: 5e3,
+        maximumAge: 3e5
+      }
+    );
+  }), l);
+}
+function p() {
+  var e;
+  return {
+    url: window.location.href,
+    path: window.location.pathname,
+    query: window.location.search || null,
+    referrer: document.referrer || null,
+    language: navigator.language,
+    languages: [...navigator.languages],
+    timeZone: y(),
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    cookieEnabled: navigator.cookieEnabled,
+    onLine: navigator.onLine,
+    screen: {
+      width: window.screen.width,
+      height: window.screen.height,
+      availWidth: window.screen.availWidth,
+      availHeight: window.screen.availHeight,
+      pixelRatio: window.devicePixelRatio,
+      colorDepth: window.screen.colorDepth,
+      orientation: ((e = window.screen.orientation) == null ? void 0 : e.type) ?? null
+    },
+    viewport: {
+      width: window.innerWidth,
+      height: window.innerHeight
+    },
+    connection: C(),
+    memory: T(),
+    utm: E(),
+    geolocation: r
+  };
+}
+async function _() {
+  return await f(), p();
+}
+const b = ["[data-track-event]", "[data-track]", "[data-goal]"];
+class I {
   constructor(t) {
-    this.name = "clicks", this.tracker = null, this.selectors = (t == null ? void 0 : t.selectors) ?? y, this.handleClick = this.handleGlobalClick.bind(this);
+    this.name = "clicks", this.tracker = null, this.selectors = (t == null ? void 0 : t.selectors) ?? b, this.handleClick = this.handleGlobalClick.bind(this);
   }
   start(t) {
     this.tracker = t, document.addEventListener("click", this.handleClick, { capture: !0 });
@@ -84,21 +298,21 @@ class S {
   handleGlobalClick(t) {
     const n = t.target instanceof Element ? t.target.closest(this.selectors.join(", ")) : null;
     if (!n || !this.tracker) return;
-    const i = n.dataset, s = i.trackEvent || i.track || i.goal || "click", r = {};
-    for (const [a, o] of Object.entries(i))
-      ["trackEvent", "track", "goal"].includes(a) || (r[a] = o);
+    const i = n.dataset, a = i.trackEvent || i.track || i.goal || "click", o = {};
+    for (const [s, c] of Object.entries(i))
+      ["trackEvent", "track", "goal"].includes(s) || (o[s] = c);
     this.tracker.trackEvent({
       type: "click",
-      name: s,
-      properties: r,
+      name: a,
+      properties: o,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
   }
 }
-function C(e) {
-  return new S(e);
+function L(e) {
+  return new I(e);
 }
-class T {
+class P {
   constructor(t) {
     this.name = "pageViews", this.tracker = null, this.originalPushState = null, this.originalReplaceState = null, this.trackOnLoad = (t == null ? void 0 : t.trackOnLoad) ?? !0, this.trackHashChanges = (t == null ? void 0 : t.trackHashChanges) ?? !1, this.handlePopState = this.trackPageView.bind(this), this.handleHashChange = this.trackPageView.bind(this), this.handleLoad = this.trackPageView.bind(this);
   }
@@ -110,10 +324,10 @@ class T {
   }
   patchHistory() {
     const t = this;
-    this.originalPushState = history.pushState, this.originalReplaceState = history.replaceState, history.pushState = function(n, i, s) {
-      t.originalPushState.call(this, n, i, s), t.trackPageView();
-    }, history.replaceState = function(n, i, s) {
-      t.originalReplaceState.call(this, n, i, s), t.trackPageView();
+    this.originalPushState = history.pushState, this.originalReplaceState = history.replaceState, history.pushState = function(n, i, a) {
+      t.originalPushState.call(this, n, i, a), t.trackPageView();
+    }, history.replaceState = function(n, i, a) {
+      t.originalReplaceState.call(this, n, i, a), t.trackPageView();
     };
   }
   unpatchHistory() {
@@ -143,220 +357,65 @@ class T {
     });
   }
 }
-function E(e) {
-  return new T(e);
+function H(e) {
+  return new P(e);
 }
-function L() {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-  } catch {
-    return "unknown";
-  }
+function R(e) {
+  const t = e.platform;
+  return t === "ios" || t === "android";
 }
-function P() {
-  const e = navigator;
-  return e.connection ? {
-    effectiveType: e.connection.effectiveType ?? "unknown",
-    downlink: e.connection.downlink ?? null,
-    rtt: e.connection.rtt ?? null,
-    saveData: e.connection.saveData ?? null
-  } : null;
+function D(e) {
+  return !R(e);
 }
-function H() {
-  const e = performance;
-  return e.memory ? {
-    usedJSHeapSize: e.memory.usedJSHeapSize ?? null,
-    totalJSHeapSize: e.memory.totalJSHeapSize ?? null,
-    jsHeapSizeLimit: e.memory.jsHeapSizeLimit ?? null
-  } : null;
-}
-function b() {
-  const e = new URLSearchParams(window.location.search);
-  return {
-    source: e.get("utm_source"),
-    medium: e.get("utm_medium"),
-    campaign: e.get("utm_campaign"),
-    term: e.get("utm_term"),
-    content: e.get("utm_content")
-  };
-}
-let c = null, l = null;
-async function m() {
-  return c !== null ? c : l || (l = new Promise((e) => {
-    if (!navigator.geolocation) {
-      e(null);
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (t) => {
-        c = {
-          latitude: t.coords.latitude,
-          longitude: t.coords.longitude,
-          accuracy: t.coords.accuracy
-        }, e(c);
-      },
-      () => {
-        e(null);
-      },
-      {
-        enableHighAccuracy: !1,
-        timeout: 5e3,
-        maximumAge: 3e5
-      }
-    );
-  }), l);
-}
-function h() {
-  var e;
-  return {
-    url: window.location.href,
-    path: window.location.pathname,
-    query: window.location.search || null,
-    referrer: document.referrer || null,
-    language: navigator.language,
-    languages: [...navigator.languages],
-    timeZone: L(),
-    userAgent: navigator.userAgent,
-    platform: navigator.platform,
-    cookieEnabled: navigator.cookieEnabled,
-    onLine: navigator.onLine,
-    screen: {
-      width: window.screen.width,
-      height: window.screen.height,
-      availWidth: window.screen.availWidth,
-      availHeight: window.screen.availHeight,
-      pixelRatio: window.devicePixelRatio,
-      colorDepth: window.screen.colorDepth,
-      orientation: ((e = window.screen.orientation) == null ? void 0 : e.type) ?? null
-    },
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight
-    },
-    connection: P(),
-    memory: H(),
-    utm: b(),
-    geolocation: c
-  };
-}
-async function R() {
-  return await m(), h();
-}
-const u = 10, d = 5e3, g = "analytics_session_id";
-function f() {
+const d = "analytics_session_id";
+function g() {
   return typeof crypto < "u" && typeof crypto.randomUUID == "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
 }
-function I() {
+function B() {
   if (typeof sessionStorage > "u")
-    return f();
-  const e = sessionStorage.getItem(g);
+    return g();
+  const e = sessionStorage.getItem(d);
   if (e)
     return e;
-  const t = f();
-  return sessionStorage.setItem(g, t), t;
+  const t = g();
+  return sessionStorage.setItem(d, t), t;
 }
-class _ {
-  constructor(t) {
-    this.eventQueue = [], this.collectors = [], this.isRunning = !1, this.flushTimer = null, this.contextCached = null, this.config = {
-      batchSize: u,
-      flushInterval: d,
-      geolocation: !1,
-      ...t
-    }, this.sessionId = I(), this.transport = w({
-      apiKey: this.config.apiKey,
-      endpoint: this.config.endpoint,
-      useBeacon: !1
-    }), this.consentManager = this.config.consent ? k(this.config.consent) : v, this.setupConsentListener();
-  }
-  setupConsentListener() {
-    this.consentManager.onUpdate((t) => {
-      t && !this.isRunning ? this.start() : !t && this.isRunning && this.stop();
-    });
-  }
-  track(t, n = {}, i) {
-    this.trackEvent(
-      {
-        type: "custom",
-        name: t,
-        properties: n,
-        timestamp: (/* @__PURE__ */ new Date()).toISOString()
-      },
-      i
-    );
-  }
-  trackEvent(t, n) {
-    const i = this.consentManager.canTrack(), s = (r) => {
-      if (!r) return;
-      let a = t;
-      if (this.config.onBeforeSend) {
-        const o = this.config.onBeforeSend(t);
-        if (!o) return;
-        a = o;
-      }
-      t.type === "page_view" && (this.contextCached = h()), a.context = this.contextCached ?? h(), a.sessionId = this.sessionId, n && (a.userId = n), this.eventQueue.push(a), this.eventQueue.length >= (this.config.batchSize ?? u) && this.flush();
-    };
-    i instanceof Promise ? i.then(s).catch(() => {
-    }) : s(i);
-  }
-  start() {
-    if (this.isRunning) return;
-    const t = this.consentManager.canTrack(), n = (i) => {
-      i && (this.isRunning = !0, this.contextCached = h(), this.initializeCollectors(), this.startFlushTimer(), this.setupUnloadHandler(), this.config.geolocation && this.requestGeolocation());
-    };
-    t instanceof Promise ? t.then(n).catch(() => {
-    }) : n(t);
-  }
-  async requestGeolocation() {
-    const t = await m();
-    t && this.contextCached && (this.contextCached.geolocation = t);
-  }
-  stop() {
-    this.isRunning && (this.isRunning = !1, this.collectors.forEach((t) => t.stop()), this.collectors = [], this.stopFlushTimer(), this.flush());
-  }
-  isTracking() {
-    return this.isRunning;
-  }
-  async flush() {
-    if (this.eventQueue.length === 0) return;
-    const t = [...this.eventQueue];
-    this.eventQueue = [];
-    try {
-      await this.transport.send(t);
-    } catch (n) {
-      this.config.onError && t[0] && this.config.onError(n, t[0]);
+function x() {
+  return {
+    getContext: p,
+    getSessionId: B,
+    getGeolocation: f,
+    onBackground: (e) => {
+      const t = () => {
+        document.visibilityState === "hidden" && e();
+      };
+      return window.addEventListener("visibilitychange", t), () => window.removeEventListener("visibilitychange", t);
     }
-  }
-  initializeCollectors() {
-    const t = this.config.collectors ?? ["pageViews", "clicks"];
-    t.includes("pageViews") && this.collectors.push(E()), t.includes("clicks") && this.collectors.push(C()), this.collectors.forEach((n) => n.start(this));
-  }
-  startFlushTimer() {
-    this.stopFlushTimer(), this.flushTimer = setInterval(() => {
-      this.flush();
-    }, this.config.flushInterval ?? d);
-  }
-  stopFlushTimer() {
-    this.flushTimer && (clearInterval(this.flushTimer), this.flushTimer = null);
-  }
-  setupUnloadHandler() {
-    window.addEventListener("visibilitychange", () => {
-      document.visibilityState === "hidden" && this.flush();
-    });
-  }
+  };
+}
+function A(e) {
+  const t = e.collectors ?? ["pageViews", "clicks"], n = [];
+  return t.includes("pageViews") && n.push(H()), t.includes("clicks") && n.push(L()), n;
 }
 function U(e) {
-  return new _(e);
+  const t = {
+    ...e,
+    platform: e.platform ?? x()
+  }, n = A(e);
+  return new S(t, n);
 }
 export {
-  _ as Tracker,
-  C as createClickCollector,
+  S as Tracker,
+  L as createClickCollector,
   k as createConsentManager,
   w as createHttpTransport,
-  E as createPageViewCollector,
+  H as createPageViewCollector,
   U as createTracker,
   v as defaultConsentManager,
-  h as getBrowserContext,
-  R as getBrowserContextWithGeo,
-  m as getGeolocation
+  p as getBrowserContext,
+  _ as getBrowserContextWithGeo,
+  f as getGeolocation,
+  D as isBrowserContext,
+  R as isMobileContext
 };
 //# sourceMappingURL=tracker.es.js.map

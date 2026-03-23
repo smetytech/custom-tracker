@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "composite": true
+  },
+  "include": [
+    "src/types.ts",
+    "src/tracker.ts",
+    "src/transports/**/*",
+    "src/consent/**/*",
+    "src/collectors/**/*",
+    "src/index.ts"
+  ]
+}

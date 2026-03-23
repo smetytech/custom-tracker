@@ -3,7 +3,12 @@ export interface ConsentConfig {
   onUpdate?: (callback: (granted: boolean) => void) => void;
 }
 
-export type CollectorType = "pageViews" | "clicks" | "context";
+export type CollectorType =
+  | "pageViews"
+  | "clicks"
+  | "screenViews"
+  | "touch"
+  | "lifecycle";
 
 export interface BrowserContext {
   url: string;
@@ -55,14 +60,80 @@ export interface BrowserContext {
   } | null;
 }
 
+export interface MobileContext {
+  platform: "ios" | "android";
+  deviceName: string | null;
+  deviceBrand: string | null;
+  deviceModel: string | null;
+  osName: string | null;
+  osVersion: string | null;
+  appVersion: string | null;
+  buildNumber: string | null;
+  locale: string;
+  locales: string[];
+  timeZone: string;
+  isDevice: boolean;
+  screen: {
+    width: number;
+    height: number;
+    pixelRatio: number;
+    fontScale: number;
+  };
+  geolocation: {
+    latitude: number | null;
+    longitude: number | null;
+    accuracy: number | null;
+  } | null;
+}
+
+export type TrackingContext = BrowserContext | MobileContext;
+
+/**
+ * Type guard to check if a TrackingContext is a MobileContext.
+ * Useful on the server side when processing events from both web and mobile.
+ *
+ * Discriminates using the `platform` field: MobileContext.platform is always "ios" | "android",
+ * while BrowserContext.platform is navigator.platform (e.g. "MacIntel", "Win32", "Linux x86_64").
+ */
+export function isMobileContext(ctx: TrackingContext): ctx is MobileContext {
+  const platform = (ctx as MobileContext).platform;
+  return platform === "ios" || platform === "android";
+}
+
+/**
+ * Type guard to check if a TrackingContext is a BrowserContext.
+ */
+export function isBrowserContext(ctx: TrackingContext): ctx is BrowserContext {
+  return !isMobileContext(ctx);
+}
+
 export interface TrackEvent {
-  type: "page_view" | "click" | "custom";
+  type: "page_view" | "click" | "custom" | "screen_view" | "app_lifecycle" | "touch";
   name: string;
   properties: Record<string, unknown>;
   timestamp: string;
   sessionId?: string;
   userId?: string;
-  context?: BrowserContext;
+  context?: TrackingContext;
+}
+
+/**
+ * Platform adapter interface that abstracts away browser vs mobile differences.
+ * The core Tracker class uses this to remain platform-agnostic.
+ */
+export interface PlatformAdapter {
+  /** Collect the current platform context (BrowserContext or MobileContext) */
+  getContext: () => TrackingContext;
+  /** Get or create a persistent session ID */
+  getSessionId: () => string | Promise<string>;
+  /** Optional: get geolocation data */
+  getGeolocation?: () => Promise<{
+    latitude: number | null;
+    longitude: number | null;
+    accuracy: number | null;
+  } | null>;
+  /** Optional: register a callback for when the app/page goes to background */
+  onBackground?: (callback: () => void) => () => void;
 }
 
 export interface TrackerConfig {
@@ -75,6 +146,8 @@ export interface TrackerConfig {
   geolocation?: boolean;
   onBeforeSend?: (event: TrackEvent) => TrackEvent | null;
   onError?: (error: Error, event: TrackEvent) => void;
+  /** Platform adapter - injected by createTracker (browser) or createExpoTracker (mobile) */
+  platform?: PlatformAdapter;
 }
 
 export interface Collector {
