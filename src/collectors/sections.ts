@@ -17,7 +17,7 @@ export interface SectionCollectorOptions {
   /**
    * Minimum dwell time in milliseconds before a section_view is recorded.
    * Filters out fast scroll-throughs that aren't real engagement.
-   * @default 1000
+   * @default 175
    */
   minDwellTime?: number;
 
@@ -36,7 +36,7 @@ interface SectionState {
 
 const DEFAULT_ATTRIBUTE = 'data-track-section';
 const DEFAULT_THRESHOLD = 0.5;
-const DEFAULT_MIN_DWELL_TIME = 1000;
+const DEFAULT_MIN_DWELL_TIME = 175;
 
 export class SectionCollector {
   name = 'sections' as const;
