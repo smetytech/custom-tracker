@@ -3,6 +3,7 @@ class w {
     this.endpoint = t.endpoint, this.headers = {
       "Content-Type": "application/json",
       "X-API-Key": t.apiKey,
+      ...t.projectId ? { "X-Project-ID": t.projectId } : {},
       ...t.headers
     }, this.useBeacon = t.useBeacon ?? !1;
   }
@@ -45,9 +46,9 @@ function v(n) {
 function S(n) {
   const t = /* @__PURE__ */ new Set();
   return n != null && n.onUpdate && n.onUpdate((r) => {
-    t.forEach((a) => {
+    t.forEach((o) => {
       try {
-        a(r);
+        o(r);
       } catch {
       }
     });
@@ -89,6 +90,7 @@ class y {
     }, this.transport = v({
       apiKey: this.config.apiKey,
       endpoint: this.config.endpoint,
+      projectId: this.config.projectId,
       useBeacon: !1
     }), this.consentManager = this.config.consent ? S(this.config.consent) : k, this.setupConsentListener();
   }
@@ -112,13 +114,13 @@ class y {
     if (!this.isRunning) return;
     const i = this.consentManager.canTrack(), s = (r) => {
       if (!r || !this.isRunning) return;
-      let a = { ...t };
+      let o = { ...t };
       if (this.config.onBeforeSend) {
-        const o = this.config.onBeforeSend(a);
-        if (!o) return;
-        a = { ...o };
+        const a = this.config.onBeforeSend(o);
+        if (!a) return;
+        o = { ...a };
       }
-      (a.type === "page_view" || a.type === "screen_view") && (this.contextCached = this.platformAdapter.getContext()), a.context = this.contextCached ?? this.platformAdapter.getContext(), a.sessionId = this.sessionId ?? void 0, e && (a.userId = e), this.eventQueue.push(a), this.eventQueue.length >= (this.config.batchSize ?? h) && this.flush();
+      (o.type === "page_view" || o.type === "screen_view") && (this.contextCached = this.platformAdapter.getContext()), o.context = this.contextCached ?? this.platformAdapter.getContext(), o.sessionId = this.sessionId ?? void 0, e && (o.userId = e), this.eventQueue.push(o), this.eventQueue.length >= (this.config.batchSize ?? h) && this.flush();
     };
     i instanceof Promise ? i.then(s).catch(() => {
     }) : s(i);
@@ -212,7 +214,7 @@ function C() {
     jsHeapSizeLimit: n.memory.jsHeapSizeLimit ?? null
   } : null;
 }
-function T() {
+function I() {
   const n = new URLSearchParams(window.location.search);
   return {
     source: n.get("utm_source"),
@@ -277,17 +279,17 @@ function m() {
     },
     connection: E(),
     memory: C(),
-    utm: T(),
+    utm: I(),
     geolocation: c
   };
 }
-async function M() {
+async function F() {
   return await g(), m();
 }
-const L = ["[data-track-event]", "[data-track]", "[data-goal]"];
-class A {
+const T = ["[data-track-event]", "[data-track]", "[data-goal]"];
+class P {
   constructor(t) {
-    this.name = "clicks", this.tracker = null, this.selectors = (t == null ? void 0 : t.selectors) ?? L, this.handleClick = this.handleGlobalClick.bind(this);
+    this.name = "clicks", this.tracker = null, this.selectors = (t == null ? void 0 : t.selectors) ?? T, this.handleClick = this.handleGlobalClick.bind(this);
   }
   start(t) {
     this.tracker = t, document.addEventListener("click", this.handleClick, { capture: !0 });
@@ -299,8 +301,8 @@ class A {
     const e = t.target instanceof Element ? t.target.closest(this.selectors.join(", ")) : null;
     if (!e || !this.tracker) return;
     const i = e.dataset, s = i.trackEvent || i.track || i.goal || "click", r = {};
-    for (const [a, o] of Object.entries(i))
-      ["trackEvent", "track", "goal"].includes(a) || (r[a] = o);
+    for (const [o, a] of Object.entries(i))
+      ["trackEvent", "track", "goal"].includes(o) || (r[o] = a);
     this.tracker.trackEvent({
       type: "click",
       name: s,
@@ -309,10 +311,10 @@ class A {
     });
   }
 }
-function P(n) {
-  return new A(n);
+function A(n) {
+  return new P(n);
 }
-class I {
+class L {
   constructor(t) {
     this.name = "pageViews", this.tracker = null, this.originalPushState = null, this.originalReplaceState = null, this.trackOnLoad = (t == null ? void 0 : t.trackOnLoad) ?? !0, this.trackHashChanges = (t == null ? void 0 : t.trackHashChanges) ?? !1, this.handlePopState = this.trackPageView.bind(this), this.handleHashChange = this.trackPageView.bind(this), this.handleLoad = this.trackPageView.bind(this);
   }
@@ -358,12 +360,12 @@ class I {
   }
 }
 function R(n) {
-  return new I(n);
+  return new L(n);
 }
-const H = "data-track-section", O = 0.5, _ = 1e3;
-class D {
+const D = "data-track-section", H = 0.5, O = 1e3;
+class _ {
   constructor(t) {
-    this.name = "sections", this.tracker = null, this.observer = null, this.mutationObserver = null, this.sections = /* @__PURE__ */ new Map(), this.originalPushState = null, this.handlePopState = null, this.attribute = (t == null ? void 0 : t.attribute) ?? H, this.threshold = (t == null ? void 0 : t.threshold) ?? O, this.minDwellTime = (t == null ? void 0 : t.minDwellTime) ?? _, this.allowReentry = (t == null ? void 0 : t.allowReentry) ?? !1;
+    this.name = "sections", this.tracker = null, this.observer = null, this.mutationObserver = null, this.sections = /* @__PURE__ */ new Map(), this.originalPushState = null, this.handlePopState = null, this.attribute = (t == null ? void 0 : t.attribute) ?? D, this.threshold = (t == null ? void 0 : t.threshold) ?? H, this.minDwellTime = (t == null ? void 0 : t.minDwellTime) ?? O, this.allowReentry = (t == null ? void 0 : t.allowReentry) ?? !1;
   }
   start(t) {
     this.tracker = t, this.observer = new IntersectionObserver(
@@ -414,9 +416,9 @@ class D {
       dwellTime: i,
       url: window.location.href,
       path: window.location.pathname
-    }, a = t.dataset;
-    for (const [o, p] of Object.entries(a))
-      o !== "trackSection" && (r[o] = p);
+    }, o = t.dataset;
+    for (const [a, p] of Object.entries(o))
+      a !== "trackSection" && (r[a] = p);
     this.tracker.trackEvent({
       type: "section_view",
       name: s,
@@ -451,13 +453,13 @@ class D {
   }
 }
 function B(n) {
-  return new D(n);
+  return new _(n);
 }
 function x(n) {
   const t = n.platform;
   return t === "ios" || t === "android";
 }
-function F(n) {
+function M(n) {
   return !x(n);
 }
 const d = "analytics_session_id";
@@ -486,20 +488,30 @@ function V() {
     }
   };
 }
-function N(n) {
+function j(n) {
   const t = n.collectors ?? ["pageViews", "clicks"], e = [];
-  return t.includes("pageViews") && e.push(R()), t.includes("clicks") && e.push(P()), t.includes("sections") && e.push(B()), e;
+  return t.includes("pageViews") && e.push(R()), t.includes("clicks") && e.push(A()), t.includes("sections") && e.push(B()), e;
+}
+function N() {
+  if (typeof document > "u") return;
+  const n = document.currentScript;
+  if (n != null && n.dataset.projectId)
+    return n.dataset.projectId;
+  const t = document.querySelectorAll("script[data-project-id]");
+  if (t.length > 0)
+    return t[t.length - 1].dataset.projectId;
 }
 function G(n) {
-  const t = {
+  const t = n.projectId ?? N(), e = {
     ...n,
+    ...t ? { projectId: t } : {},
     platform: n.platform ?? V()
-  }, e = N(n);
-  return new y(t, e);
+  }, i = j(n);
+  return new y(e, i);
 }
 export {
   y as Tracker,
-  P as createClickCollector,
+  A as createClickCollector,
   S as createConsentManager,
   v as createHttpTransport,
   R as createPageViewCollector,
@@ -507,9 +519,9 @@ export {
   G as createTracker,
   k as defaultConsentManager,
   m as getBrowserContext,
-  M as getBrowserContextWithGeo,
+  F as getBrowserContextWithGeo,
   g as getGeolocation,
-  F as isBrowserContext,
+  M as isBrowserContext,
   x as isMobileContext
 };
 //# sourceMappingURL=tracker.es.js.map

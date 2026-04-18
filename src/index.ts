@@ -72,6 +72,24 @@ function createBrowserCollectors(config: TrackerConfig) {
   return collectors;
 }
 
+// ─── Auto-detect data-project-id from script tag ─────────────────────────────
+
+function getProjectIdFromScriptTag(): string | undefined {
+  if (typeof document === "undefined") return undefined;
+
+  const currentScript = document.currentScript as HTMLScriptElement | null;
+  if (currentScript?.dataset.projectId) {
+    return currentScript.dataset.projectId;
+  }
+
+  const scripts = document.querySelectorAll('script[data-project-id]');
+  if (scripts.length > 0) {
+    return (scripts[scripts.length - 1] as HTMLScriptElement).dataset.projectId;
+  }
+
+  return undefined;
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
@@ -81,8 +99,11 @@ function createBrowserCollectors(config: TrackerConfig) {
  * For Expo/React Native apps, use `createExpoTracker` from `@smety/tracker/expo`.
  */
 export function createTracker(config: TrackerConfig): TrackerPublicAPI {
+  const projectId = config.projectId ?? getProjectIdFromScriptTag();
+
   const browserConfig: TrackerConfig = {
     ...config,
+    ...(projectId ? { projectId } : {}),
     platform: config.platform ?? createBrowserAdapter(),
   };
 

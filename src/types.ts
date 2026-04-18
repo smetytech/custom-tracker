@@ -140,6 +140,7 @@ export interface PlatformAdapter {
 export interface TrackerConfig {
   apiKey: string;
   endpoint: string;
+  projectId?: string;
   consent?: ConsentConfig;
   collectors?: CollectorType[];
   batchSize?: number;

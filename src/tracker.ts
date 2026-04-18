@@ -52,6 +52,7 @@ export class Tracker implements TrackerPublicAPI {
     this.transport = createHttpTransport({
       apiKey: this.config.apiKey,
       endpoint: this.config.endpoint,
+      projectId: this.config.projectId,
       useBeacon: false,
     });
 

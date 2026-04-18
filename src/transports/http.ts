@@ -3,6 +3,7 @@ import type { Transport, TrackEvent } from "../types";
 export interface HttpTransportOptions {
   apiKey: string;
   endpoint: string;
+  projectId?: string;
   headers?: Record<string, string>;
   useBeacon?: boolean;
 }
@@ -17,6 +18,7 @@ export class HttpTransport implements Transport {
     this.headers = {
       "Content-Type": "application/json",
       "X-API-Key": options.apiKey,
+      ...(options.projectId ? { "X-Project-ID": options.projectId } : {}),
       ...options.headers,
     };
     this.useBeacon = options.useBeacon ?? false;

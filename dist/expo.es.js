@@ -3,6 +3,7 @@ class P {
     this.endpoint = t.endpoint, this.headers = {
       "Content-Type": "application/json",
       "X-API-Key": t.apiKey,
+      ...t.projectId ? { "X-Project-ID": t.projectId } : {},
       ...t.headers
     }, this.useBeacon = t.useBeacon ?? !1;
   }
@@ -89,6 +90,7 @@ class A {
     }, this.transport = x({
       apiKey: this.config.apiKey,
       endpoint: this.config.endpoint,
+      projectId: this.config.projectId,
       useBeacon: !1
     }), this.consentManager = this.config.consent ? E(this.config.consent) : N, this.setupConsentListener();
   }
@@ -211,7 +213,7 @@ async function B() {
     };
   }
 }
-async function M() {
+async function D() {
   try {
     const e = await import("expo-application");
     return {
@@ -225,7 +227,7 @@ async function M() {
     };
   }
 }
-async function D() {
+async function M() {
   var e, t, n, r;
   try {
     const i = await import("expo-localization"), a = ((e = i.getLocales) == null ? void 0 : e.call(i)) ?? [], s = ((t = i.getCalendars) == null ? void 0 : t.call(i)) ?? [];
@@ -301,8 +303,8 @@ async function V() {
     return c;
   const [e, t, n] = await Promise.all([
     B(),
-    M(),
-    D()
+    D(),
+    M()
   ]);
   return c = {
     platform: C(),
@@ -332,10 +334,10 @@ async function T() {
     geolocation: u
   };
 }
-async function $() {
+async function K() {
   return await w(), T();
 }
-function j() {
+function $() {
   c = null, u = null, l = !1;
 }
 const g = "@smety_tracker_session_id";
@@ -537,7 +539,7 @@ function tt(e) {
   return !Z(e);
 }
 const h = require("react"), k = h.createContext(null);
-function W(e) {
+function j(e) {
   const { tracker: t, autoStart: n = !0, children: r } = e;
   return h.useEffect(() => (n && !t.isTracking() && t.start(), () => {
     n && t.isTracking() && t.stop();
@@ -547,7 +549,7 @@ function W(e) {
     r
   );
 }
-W.displayName = "TrackerProvider";
+j.displayName = "TrackerProvider";
 function et() {
   const e = h.useContext(k);
   if (!e)
@@ -559,7 +561,7 @@ function et() {
 function nt() {
   return h.useContext(k);
 }
-function H() {
+function W() {
   try {
     const { Platform: e } = require("react-native");
     return e.OS === "ios" ? "ios" : "android";
@@ -567,9 +569,9 @@ function H() {
     return "android";
   }
 }
-function Q() {
+function H() {
   let e = null;
-  const t = H(), n = T().then((i) => {
+  const t = W(), n = T().then((i) => {
     e = i;
   }).catch(() => {
   });
@@ -605,14 +607,14 @@ function Q() {
     }
   }, contextReady: n };
 }
-function K(e) {
+function Q(e) {
   const t = e.collectors ?? ["screenViews", "lifecycle"], n = [];
   return t.includes("screenViews") && e.navigationRef && n.push(
     F({ navigationRef: e.navigationRef })
   ), t.includes("touch") && n.push(U()), t.includes("lifecycle") && n.push(G()), n;
 }
 function rt(e) {
-  const { adapter: t } = Q(), n = K(e), r = new A(
+  const { adapter: t } = H(), n = Q(e), r = new A(
     {
       ...e,
       collectors: [],
@@ -647,7 +649,7 @@ function rt(e) {
 export {
   X as TrackablePressable,
   A as Tracker,
-  W as TrackerProvider,
+  j as TrackerProvider,
   z as clearMobileSessionId,
   E as createConsentManager,
   rt as createExpoTracker,
@@ -658,12 +660,12 @@ export {
   Y as createTrackablePressable,
   N as defaultConsentManager,
   T as getMobileContext,
-  $ as getMobileContextWithGeo,
+  K as getMobileContextWithGeo,
   w as getMobileGeolocation,
   _ as getMobileSessionId,
   tt as isBrowserContext,
   Z as isMobileContext,
-  j as resetMobileContextCache,
+  $ as resetMobileContextCache,
   R as trackPress,
   J as useTrackPress,
   et as useTracker,
