@@ -153,6 +153,28 @@ if (window.CustomTracker) {
 }
 ```
 
+Or, on Wordpress, in Theme Settings > Custom JS:
+```javascript
+jQuery(document).ready(function($) {
+    // 1. Extragem Numele Produsului (din titlul H1)
+    var productName = $('.product_title').text().trim(); // CHANGE THIS FOR GETTING THE PRODUCT TITLE
+    
+    // 2. Extragem ID-ul Produsului (din valoarea butonului de adăugare în coș)
+    var productId = $('.single_add_to_cart_button').val() || 'unknown';  // CHANGE THIS FOR GETTING THE ADD TO CART BUTTON
+
+    // 3. Aplicăm atributele în mod dinamic
+    $('.single_add_to_cart_button').attr({
+        'data-track-event': 'add-to-cart',
+        'data-product-id': productId, // CHANGE THIS
+        'data-product-name': productName // CHANGE THIS
+    });
+    
+    // 4. Marcăm secțiunea cu ID-ul produsului pentru context
+    $('.summary.entry-summary').attr('data-track-section', 'product-page-' + productId); // CHANGE THIS
+});
+```
+
+
 ## 4) Consent Integration Notes
 
 - The only required customization is `hasConsent()`
