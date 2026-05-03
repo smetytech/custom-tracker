@@ -141,6 +141,7 @@ export interface TrackerConfig {
   apiKey: string;
   endpoint: string;
   projectId?: string;
+  sourceIdentifier?: string;
   consent?: ConsentConfig;
   collectors?: CollectorType[];
   batchSize?: number;

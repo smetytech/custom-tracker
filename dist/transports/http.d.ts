@@ -3,6 +3,7 @@ export interface HttpTransportOptions {
     apiKey: string;
     endpoint: string;
     projectId?: string;
+    sourceIdentifier?: string;
     headers?: Record<string, string>;
     useBeacon?: boolean;
 }

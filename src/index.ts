@@ -100,10 +100,12 @@ function getProjectIdFromScriptTag(): string | undefined {
  */
 export function createTracker(config: TrackerConfig): TrackerPublicAPI {
   const projectId = config.projectId ?? getProjectIdFromScriptTag();
+  const sourceIdentifier = config.sourceIdentifier ?? null;
 
   const browserConfig: TrackerConfig = {
     ...config,
     ...(projectId ? { projectId } : {}),
+    ...(sourceIdentifier ? { sourceIdentifier } : {}),
     platform: config.platform ?? createBrowserAdapter(),
   };
 

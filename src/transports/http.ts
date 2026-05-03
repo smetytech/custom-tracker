@@ -4,6 +4,7 @@ export interface HttpTransportOptions {
   apiKey: string;
   endpoint: string;
   projectId?: string;
+  sourceIdentifier?: string;
   headers?: Record<string, string>;
   useBeacon?: boolean;
 }
@@ -19,6 +20,7 @@ export class HttpTransport implements Transport {
       "Content-Type": "application/json",
       "X-API-Key": options.apiKey,
       ...(options.projectId ? { "X-Project-ID": options.projectId } : {}),
+      ...(options.sourceIdentifier ? { "X-Source-Identifier": options.sourceIdentifier } : {}),
       ...options.headers,
     };
     this.useBeacon = options.useBeacon ?? false;

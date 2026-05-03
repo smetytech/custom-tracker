@@ -53,6 +53,7 @@ export class Tracker implements TrackerPublicAPI {
       apiKey: this.config.apiKey,
       endpoint: this.config.endpoint,
       projectId: this.config.projectId,
+      sourceIdentifier: this.config.sourceIdentifier,
       useBeacon: false,
     });
 
