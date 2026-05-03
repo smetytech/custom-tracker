@@ -11,6 +11,7 @@ export declare class HttpTransport implements Transport {
     private endpoint;
     private headers;
     private useBeacon;
+    private sourceIdentifier?;
     constructor(options: HttpTransportOptions);
     send(events: TrackEvent[]): Promise<void>;
     private sendWithBeacon;

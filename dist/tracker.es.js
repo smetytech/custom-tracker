@@ -1,15 +1,16 @@
 class w {
   constructor(t) {
-    this.endpoint = t.endpoint, this.headers = {
+    this.endpoint = t.endpoint, this.sourceIdentifier = t.sourceIdentifier, this.headers = {
       "Content-Type": "application/json",
       "X-API-Key": t.apiKey,
       ...t.projectId ? { "X-Project-ID": t.projectId } : {},
+      ...t.sourceIdentifier ? { "X-Source-Identifier": t.sourceIdentifier } : {},
       ...t.headers
     }, this.useBeacon = t.useBeacon ?? !1;
   }
   async send(t) {
     if (t.length === 0) return;
-    const e = { events: t };
+    const e = { events: t, ...this.sourceIdentifier ? { sourceIdentifier: this.sourceIdentifier } : {} };
     if (this.useBeacon && typeof navigator.sendBeacon == "function") {
       this.sendWithBeacon(e);
       return;
@@ -91,6 +92,7 @@ class y {
       apiKey: this.config.apiKey,
       endpoint: this.config.endpoint,
       projectId: this.config.projectId,
+      sourceIdentifier: this.config.sourceIdentifier,
       useBeacon: !1
     }), this.consentManager = this.config.consent ? S(this.config.consent) : k, this.setupConsentListener();
   }
@@ -197,7 +199,7 @@ function b() {
     return "unknown";
   }
 }
-function E() {
+function I() {
   const n = navigator;
   return n.connection ? {
     effectiveType: n.connection.effectiveType ?? "unknown",
@@ -206,7 +208,7 @@ function E() {
     saveData: n.connection.saveData ?? null
   } : null;
 }
-function C() {
+function E() {
   const n = performance;
   return n.memory ? {
     usedJSHeapSize: n.memory.usedJSHeapSize ?? null,
@@ -214,7 +216,7 @@ function C() {
     jsHeapSizeLimit: n.memory.jsHeapSizeLimit ?? null
   } : null;
 }
-function I() {
+function C() {
   const n = new URLSearchParams(window.location.search);
   return {
     source: n.get("utm_source"),
@@ -277,9 +279,9 @@ function m() {
       width: window.innerWidth,
       height: window.innerHeight
     },
-    connection: E(),
-    memory: C(),
-    utm: I(),
+    connection: I(),
+    memory: E(),
+    utm: C(),
     geolocation: c
   };
 }
@@ -362,7 +364,7 @@ class L {
 function R(n) {
   return new L(n);
 }
-const D = "data-track-section", H = 0.5, O = 1e3;
+const D = "data-track-section", H = 0.5, O = 175;
 class _ {
   constructor(t) {
     this.name = "sections", this.tracker = null, this.observer = null, this.mutationObserver = null, this.sections = /* @__PURE__ */ new Map(), this.originalPushState = null, this.handlePopState = null, this.attribute = (t == null ? void 0 : t.attribute) ?? D, this.threshold = (t == null ? void 0 : t.threshold) ?? H, this.minDwellTime = (t == null ? void 0 : t.minDwellTime) ?? O, this.allowReentry = (t == null ? void 0 : t.allowReentry) ?? !1;
@@ -502,12 +504,13 @@ function N() {
     return t[t.length - 1].dataset.projectId;
 }
 function G(n) {
-  const t = n.projectId ?? N(), e = {
+  const t = n.projectId ?? N(), e = n.sourceIdentifier ?? null, i = {
     ...n,
     ...t ? { projectId: t } : {},
+    ...e ? { sourceIdentifier: e } : {},
     platform: n.platform ?? V()
-  }, i = j(n);
-  return new y(e, i);
+  }, s = j(n);
+  return new y(i, s);
 }
 export {
   y as Tracker,

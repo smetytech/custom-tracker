@@ -13,9 +13,11 @@ export class HttpTransport implements Transport {
   private endpoint: string;
   private headers: Record<string, string>;
   private useBeacon: boolean;
+  private sourceIdentifier?: string;
 
   constructor(options: HttpTransportOptions) {
     this.endpoint = options.endpoint;
+    this.sourceIdentifier = options.sourceIdentifier;
     this.headers = {
       "Content-Type": "application/json",
       "X-API-Key": options.apiKey,
@@ -29,7 +31,7 @@ export class HttpTransport implements Transport {
   async send(events: TrackEvent[]): Promise<void> {
     if (events.length === 0) return;
 
-    const payload = { events };
+    const payload = { events, ...(this.sourceIdentifier ? { sourceIdentifier: this.sourceIdentifier } : {}) };
 
     if (this.useBeacon && typeof navigator.sendBeacon === "function") {
       this.sendWithBeacon(payload);

@@ -1,38 +1,39 @@
 class P {
-  constructor(t) {
-    this.endpoint = t.endpoint, this.headers = {
+  constructor(e) {
+    this.endpoint = e.endpoint, this.sourceIdentifier = e.sourceIdentifier, this.headers = {
       "Content-Type": "application/json",
-      "X-API-Key": t.apiKey,
-      ...t.projectId ? { "X-Project-ID": t.projectId } : {},
-      ...t.headers
-    }, this.useBeacon = t.useBeacon ?? !1;
+      "X-API-Key": e.apiKey,
+      ...e.projectId ? { "X-Project-ID": e.projectId } : {},
+      ...e.sourceIdentifier ? { "X-Source-Identifier": e.sourceIdentifier } : {},
+      ...e.headers
+    }, this.useBeacon = e.useBeacon ?? !1;
   }
-  async send(t) {
-    if (t.length === 0) return;
-    const n = { events: t };
+  async send(e) {
+    if (e.length === 0) return;
+    const n = { events: e, ...this.sourceIdentifier ? { sourceIdentifier: this.sourceIdentifier } : {} };
     if (this.useBeacon && typeof navigator.sendBeacon == "function") {
       this.sendWithBeacon(n);
       return;
     }
     await this.sendWithFetch(n);
   }
-  sendWithBeacon(t) {
+  sendWithBeacon(e) {
     if (typeof Blob > "u" || typeof (navigator == null ? void 0 : navigator.sendBeacon) != "function") {
-      this.sendWithFetch(t);
+      this.sendWithFetch(e);
       return;
     }
-    const n = new Blob([JSON.stringify(t)], {
+    const n = new Blob([JSON.stringify(e)], {
       type: "application/json"
     });
     navigator.sendBeacon(this.endpoint, n);
   }
-  async sendWithFetch(t) {
+  async sendWithFetch(e) {
     try {
       const n = typeof navigator < "u" && navigator.product === "ReactNative";
       await fetch(this.endpoint, {
         method: "POST",
         headers: this.headers,
-        body: JSON.stringify(t),
+        body: JSON.stringify(e),
         ...n ? {} : { keepalive: !0 }
       });
     } catch (n) {
@@ -40,13 +41,13 @@ class P {
     }
   }
 }
-function x(e) {
-  return new P(e);
+function x(t) {
+  return new P(t);
 }
-function E(e) {
-  const t = /* @__PURE__ */ new Set();
-  return e != null && e.onUpdate && e.onUpdate((a) => {
-    t.forEach((s) => {
+function E(t) {
+  const e = /* @__PURE__ */ new Set();
+  return t != null && t.onUpdate && t.onUpdate((a) => {
+    e.forEach((s) => {
       try {
         s(a);
       } catch {
@@ -54,19 +55,19 @@ function E(e) {
     });
   }), {
     canTrack: () => {
-      if (!e)
+      if (!t)
         return !0;
       try {
-        return e.canTrack();
+        return t.canTrack();
       } catch {
         return !1;
       }
     },
     onUpdate: (a) => {
-      t.add(a);
+      e.add(a);
     },
     clearCallbacks: () => {
-      t.clear();
+      e.clear();
     }
   };
 }
@@ -78,12 +79,12 @@ const N = {
   }
 }, y = 10, b = 5e3;
 class A {
-  constructor(t, n) {
+  constructor(e, n) {
     this.eventQueue = [], this.collectors = [], this.isRunning = !1, this.flushTimer = null, this.contextCached = null, this.sessionId = null, this.externalCollectors = [], this.backgroundCleanup = null, this.config = {
       batchSize: y,
       flushInterval: b,
       geolocation: !1,
-      ...t
+      ...e
     }, this.externalCollectors = n ?? [], this.platformAdapter = this.config.platform ?? {
       getContext: () => ({}),
       getSessionId: () => "no-session"
@@ -91,30 +92,31 @@ class A {
       apiKey: this.config.apiKey,
       endpoint: this.config.endpoint,
       projectId: this.config.projectId,
+      sourceIdentifier: this.config.sourceIdentifier,
       useBeacon: !1
     }), this.consentManager = this.config.consent ? E(this.config.consent) : N, this.setupConsentListener();
   }
   setupConsentListener() {
-    this.consentManager.onUpdate((t) => {
-      t && !this.isRunning ? this.start() : !t && this.isRunning && this.stop();
+    this.consentManager.onUpdate((e) => {
+      e && !this.isRunning ? this.start() : !e && this.isRunning && this.stop();
     });
   }
-  track(t, n = {}, r) {
+  track(e, n = {}, r) {
     this.trackEvent(
       {
         type: "custom",
-        name: t,
+        name: e,
         properties: n,
         timestamp: (/* @__PURE__ */ new Date()).toISOString()
       },
       r
     );
   }
-  trackEvent(t, n) {
+  trackEvent(e, n) {
     if (!this.isRunning) return;
     const r = this.consentManager.canTrack(), i = (a) => {
       if (!a || !this.isRunning) return;
-      let s = { ...t };
+      let s = { ...e };
       if (this.config.onBeforeSend) {
         const o = this.config.onBeforeSend(s);
         if (!o) return;
@@ -127,7 +129,7 @@ class A {
   }
   start() {
     if (this.isRunning) return;
-    const t = this.consentManager.canTrack(), n = (r) => {
+    const e = this.consentManager.canTrack(), n = (r) => {
       if (!r) return;
       this.isRunning = !0;
       const i = this.platformAdapter.getSessionId();
@@ -137,8 +139,8 @@ class A {
         this.sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`, this.postSessionInit();
       }) : (this.sessionId = i, this.postSessionInit());
     };
-    t instanceof Promise ? t.then(n).catch(() => {
-    }) : n(t);
+    e instanceof Promise ? e.then(n).catch(() => {
+    }) : n(e);
   }
   /**
    * Called after session ID is resolved. Initializes context, collectors,
@@ -150,30 +152,30 @@ class A {
   // FIX #5: Capture context reference before await to prevent writing to stale/replaced context
   async requestGeolocation() {
     if (!this.platformAdapter.getGeolocation) return;
-    const t = this.contextCached, n = await this.platformAdapter.getGeolocation();
-    n && t && t === this.contextCached && (t.geolocation = n);
+    const e = this.contextCached, n = await this.platformAdapter.getGeolocation();
+    n && e && e === this.contextCached && (e.geolocation = n);
   }
   // FIX #10: Return Promise from stop() so callers can await the final flush
   stop() {
-    this.isRunning && (this.isRunning = !1, this.collectors.forEach((t) => t.stop()), this.collectors = [], this.stopFlushTimer(), this.backgroundCleanup && (this.backgroundCleanup(), this.backgroundCleanup = null), this.flush());
+    this.isRunning && (this.isRunning = !1, this.collectors.forEach((e) => e.stop()), this.collectors = [], this.stopFlushTimer(), this.backgroundCleanup && (this.backgroundCleanup(), this.backgroundCleanup = null), this.flush());
   }
   isTracking() {
     return this.isRunning;
   }
   async flush() {
     if (this.eventQueue.length === 0) return;
-    const t = [...this.eventQueue];
+    const e = [...this.eventQueue];
     this.eventQueue = [];
     try {
-      await this.transport.send(t);
+      await this.transport.send(e);
     } catch (n) {
-      this.config.onError && t[0] && this.config.onError(n, t[0]);
+      this.config.onError && e[0] && this.config.onError(n, e[0]);
     }
   }
   initializeCollectors() {
-    for (const t of this.externalCollectors)
-      this.collectors.push(t);
-    this.collectors.forEach((t) => t.start(this));
+    for (const e of this.externalCollectors)
+      this.collectors.push(e);
+    this.collectors.forEach((e) => e.start(this));
   }
   startFlushTimer() {
     this.stopFlushTimer(), this.flushTimer = setInterval(() => {
@@ -193,14 +195,14 @@ class A {
 let c = null, u = null, l = !1;
 async function B() {
   try {
-    const e = await import("expo-device");
+    const t = await import("expo-device");
     return {
-      deviceName: e.deviceName ?? null,
-      deviceBrand: e.brand ?? null,
-      deviceModel: e.modelName ?? null,
-      osName: e.osName ?? null,
-      osVersion: e.osVersion ?? null,
-      isDevice: e.isDevice ?? !1
+      deviceName: t.deviceName ?? null,
+      deviceBrand: t.brand ?? null,
+      deviceModel: t.modelName ?? null,
+      osName: t.osName ?? null,
+      osVersion: t.osVersion ?? null,
+      isDevice: t.isDevice ?? !1
     };
   } catch {
     return {
@@ -215,10 +217,10 @@ async function B() {
 }
 async function D() {
   try {
-    const e = await import("expo-application");
+    const t = await import("expo-application");
     return {
-      appVersion: e.nativeApplicationVersion ?? null,
-      buildNumber: e.nativeBuildVersion ?? null
+      appVersion: t.nativeApplicationVersion ?? null,
+      buildNumber: t.nativeBuildVersion ?? null
     };
   } catch {
     return {
@@ -228,9 +230,9 @@ async function D() {
   }
 }
 async function M() {
-  var e, t, n, r;
+  var t, e, n, r;
   try {
-    const i = await import("expo-localization"), a = ((e = i.getLocales) == null ? void 0 : e.call(i)) ?? [], s = ((t = i.getCalendars) == null ? void 0 : t.call(i)) ?? [];
+    const i = await import("expo-localization"), a = ((t = i.getLocales) == null ? void 0 : t.call(i)) ?? [], s = ((e = i.getCalendars) == null ? void 0 : e.call(i)) ?? [];
     return {
       locale: ((n = a[0]) == null ? void 0 : n.languageTag) ?? "en",
       locales: a.map((o) => o.languageTag),
@@ -254,12 +256,12 @@ async function M() {
 }
 function S() {
   try {
-    const { Dimensions: e, PixelRatio: t } = require("react-native"), n = e.get("screen");
+    const { Dimensions: t, PixelRatio: e } = require("react-native"), n = t.get("screen");
     return {
       width: n.width,
       height: n.height,
-      pixelRatio: t.get(),
-      fontScale: t.getFontScale()
+      pixelRatio: e.get(),
+      fontScale: e.getFontScale()
     };
   } catch {
     return {
@@ -270,24 +272,24 @@ function S() {
     };
   }
 }
-function C() {
+function I() {
   try {
-    const { Platform: e } = require("react-native");
-    return e.OS === "ios" ? "ios" : "android";
+    const { Platform: t } = require("react-native");
+    return t.OS === "ios" ? "ios" : "android";
   } catch {
     return "android";
   }
 }
-async function w() {
-  var e;
+async function C() {
+  var t;
   if (l)
     return u;
   try {
-    const t = await import("expo-location"), { status: n } = await t.requestForegroundPermissionsAsync();
+    const e = await import("expo-location"), { status: n } = await e.requestForegroundPermissionsAsync();
     if (n !== "granted")
       return l = !0, null;
-    const r = await t.getCurrentPositionAsync({
-      accuracy: ((e = t.Accuracy) == null ? void 0 : e.Balanced) ?? 3
+    const r = await e.getCurrentPositionAsync({
+      accuracy: ((t = e.Accuracy) == null ? void 0 : t.Balanced) ?? 3
     });
     return u = {
       latitude: r.coords.latitude,
@@ -301,41 +303,41 @@ async function w() {
 async function V() {
   if (c)
     return c;
-  const [e, t, n] = await Promise.all([
+  const [t, e, n] = await Promise.all([
     B(),
     D(),
     M()
   ]);
   return c = {
-    platform: C(),
-    ...e,
+    platform: I(),
     ...t,
+    ...e,
     ...n,
     screen: S()
   }, c;
 }
-async function T() {
-  const e = await V();
+async function w() {
+  const t = await V();
   return {
-    platform: e.platform ?? C(),
-    deviceName: e.deviceName ?? null,
-    deviceBrand: e.deviceBrand ?? null,
-    deviceModel: e.deviceModel ?? null,
-    osName: e.osName ?? null,
-    osVersion: e.osVersion ?? null,
-    appVersion: e.appVersion ?? null,
-    buildNumber: e.buildNumber ?? null,
-    locale: e.locale ?? "en",
-    locales: e.locales ?? ["en"],
-    timeZone: e.timeZone ?? "unknown",
-    isDevice: e.isDevice ?? !0,
+    platform: t.platform ?? I(),
+    deviceName: t.deviceName ?? null,
+    deviceBrand: t.deviceBrand ?? null,
+    deviceModel: t.deviceModel ?? null,
+    osName: t.osName ?? null,
+    osVersion: t.osVersion ?? null,
+    appVersion: t.appVersion ?? null,
+    buildNumber: t.buildNumber ?? null,
+    locale: t.locale ?? "en",
+    locales: t.locales ?? ["en"],
+    timeZone: t.timeZone ?? "unknown",
+    isDevice: t.isDevice ?? !0,
     screen: S(),
     // Always get fresh screen info (orientation changes)
     geolocation: u
   };
 }
 async function K() {
-  return await w(), T();
+  return await C(), w();
 }
 function $() {
   c = null, u = null, l = !1;
@@ -346,39 +348,39 @@ function p() {
 }
 async function _() {
   try {
-    const e = await I();
-    if (!e)
+    const t = await T();
+    if (!t)
       return p();
-    const t = await e.getItem(g);
-    if (t)
-      return t;
+    const e = await t.getItem(g);
+    if (e)
+      return e;
     const n = p();
-    return await e.setItem(g, n), n;
+    return await t.setItem(g, n), n;
   } catch {
     return p();
   }
 }
-async function z() {
+async function X() {
   try {
-    const e = await I();
-    e && await e.removeItem(g);
+    const t = await T();
+    t && await t.removeItem(g);
   } catch {
   }
 }
-async function I() {
+async function T() {
   try {
-    const e = await import("@react-native-async-storage/async-storage");
-    return e.default ?? e;
+    const t = await import("@react-native-async-storage/async-storage");
+    return t.default ?? t;
   } catch {
     return null;
   }
 }
 class L {
-  constructor(t) {
-    this.name = "screenViews", this.tracker = null, this.unsubscribe = null, this.readyPoller = null, this.previousRouteName = null, this.navigationRef = t.navigationRef, this.trackInitialScreen = t.trackInitialScreen ?? !0, this.readyPollInterval = t.readyPollInterval ?? 100;
+  constructor(e) {
+    this.name = "screenViews", this.tracker = null, this.unsubscribe = null, this.readyPoller = null, this.previousRouteName = null, this.navigationRef = e.navigationRef, this.trackInitialScreen = e.trackInitialScreen ?? !0, this.readyPollInterval = e.readyPollInterval ?? 100;
   }
-  start(t) {
-    this.tracker = t, this.navigationRef.isReady() ? this.attachListener() : this.readyPoller = setInterval(() => {
+  start(e) {
+    this.tracker = e, this.navigationRef.isReady() ? this.attachListener() : this.readyPoller = setInterval(() => {
       this.navigationRef.isReady() && (this.clearReadyPoller(), this.attachListener());
     }, this.readyPollInterval);
   }
@@ -396,13 +398,13 @@ class L {
   clearReadyPoller() {
     this.readyPoller && (clearInterval(this.readyPoller), this.readyPoller = null);
   }
-  trackCurrentScreen(t) {
+  trackCurrentScreen(e) {
     var a, s;
     if (!this.tracker) return;
     const n = (s = (a = this.navigationRef).getCurrentRoute) == null ? void 0 : s.call(a);
     if (!n) return;
     const r = n.name;
-    if (!t && r === this.previousRouteName) return;
+    if (!e && r === this.previousRouteName) return;
     const i = this.previousRouteName;
     this.previousRouteName = r, this.tracker.trackEvent({
       type: "screen_view",
@@ -411,22 +413,22 @@ class L {
         screen: r,
         params: n.params ?? {},
         previousScreen: i,
-        isInitialScreen: t
+        isInitialScreen: e
       },
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
   }
 }
-function F(e) {
-  return new L(e);
+function F(t) {
+  return new L(t);
 }
 let f = null;
 class O {
   constructor() {
     this.name = "touch";
   }
-  start(t) {
-    f = t;
+  start(e) {
+    f = e;
   }
   stop() {
     f = null;
@@ -435,7 +437,7 @@ class O {
 function U() {
   return new O();
 }
-function R(e, t = {}, n) {
+function R(t, e = {}, n) {
   if (!f) {
     console.warn(
       "[@smety/tracker] Touch tracking not initialized. Make sure the tracker is started with the 'touch' collector enabled."
@@ -445,17 +447,17 @@ function R(e, t = {}, n) {
   f.trackEvent(
     {
       type: "touch",
-      name: e,
-      properties: t,
+      name: t,
+      properties: e,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     },
     n
   );
 }
-function J(e, t, n, r) {
+function z(t, e, n, r) {
   return require("react").useCallback(() => {
-    R(e, t ?? {}, r), n == null || n();
-  }, [e, r]);
+    R(t, e ?? {}, r), n == null || n();
+  }, [t, r]);
 }
 const d = (() => {
   try {
@@ -470,18 +472,18 @@ const d = (() => {
     return null;
   }
 })();
-function v(e) {
+function v(t) {
   if (!d || !m) return null;
   const {
-    trackEvent: t,
+    trackEvent: e,
     trackProperties: n,
     trackUserId: r,
     onPress: i,
     children: a,
     ...s
-  } = e, o = d.useCallback(() => {
-    R(t, n ?? {}, r), i == null || i();
-  }, [t, n, r, i]);
+  } = t, o = d.useCallback(() => {
+    R(e, n ?? {}, r), i == null || i();
+  }, [e, n, r, i]);
   return d.createElement(
     m.Pressable,
     { ...s, onPress: o },
@@ -489,7 +491,7 @@ function v(e) {
   );
 }
 v.displayName = "TrackablePressable";
-const X = v;
+const J = v;
 function Y() {
   return !d || !m ? null : v;
 }
@@ -497,8 +499,8 @@ class q {
   constructor() {
     this.name = "lifecycle", this.tracker = null, this.subscription = null, this.lastState = "active";
   }
-  start(t) {
-    this.tracker = t;
+  start(e) {
+    this.tracker = e;
     try {
       const { AppState: n } = require("react-native");
       this.lastState = n.currentState, this.trackLifecycleEvent("app_launch"), this.subscription = n.addEventListener(
@@ -514,15 +516,15 @@ class q {
   stop() {
     this.subscription && (this.subscription.remove(), this.subscription = null), this.tracker = null;
   }
-  handleAppStateChange(t) {
-    this.tracker && ((this.lastState === "background" || this.lastState === "inactive") && t === "active" && this.trackLifecycleEvent("app_foreground"), this.lastState === "active" && t === "background" && (this.trackLifecycleEvent("app_background"), this.tracker.flush()), this.lastState = t);
+  handleAppStateChange(e) {
+    this.tracker && ((this.lastState === "background" || this.lastState === "inactive") && e === "active" && this.trackLifecycleEvent("app_foreground"), this.lastState === "active" && e === "background" && (this.trackLifecycleEvent("app_background"), this.tracker.flush()), this.lastState = e);
   }
-  trackLifecycleEvent(t) {
+  trackLifecycleEvent(e) {
     this.tracker && this.tracker.trackEvent({
       type: "app_lifecycle",
-      name: t,
+      name: e,
       properties: {
-        state: t
+        state: e
       },
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
@@ -531,53 +533,53 @@ class q {
 function G() {
   return new q();
 }
-function Z(e) {
-  const t = e.platform;
-  return t === "ios" || t === "android";
+function Z(t) {
+  const e = t.platform;
+  return e === "ios" || e === "android";
 }
-function tt(e) {
-  return !Z(e);
+function ee(t) {
+  return !Z(t);
 }
 const h = require("react"), k = h.createContext(null);
-function j(e) {
-  const { tracker: t, autoStart: n = !0, children: r } = e;
-  return h.useEffect(() => (n && !t.isTracking() && t.start(), () => {
-    n && t.isTracking() && t.stop();
-  }), [t, n]), h.createElement(
+function j(t) {
+  const { tracker: e, autoStart: n = !0, children: r } = t;
+  return h.useEffect(() => (n && !e.isTracking() && e.start(), () => {
+    n && e.isTracking() && e.stop();
+  }), [e, n]), h.createElement(
     k.Provider,
-    { value: t },
+    { value: e },
     r
   );
 }
 j.displayName = "TrackerProvider";
-function et() {
-  const e = h.useContext(k);
-  if (!e)
+function te() {
+  const t = h.useContext(k);
+  if (!t)
     throw new Error(
       "[@smety/tracker] useTracker() must be used inside a <TrackerProvider>. Wrap your app with <TrackerProvider tracker={tracker}> first."
     );
-  return e;
+  return t;
 }
-function nt() {
+function ne() {
   return h.useContext(k);
 }
 function W() {
   try {
-    const { Platform: e } = require("react-native");
-    return e.OS === "ios" ? "ios" : "android";
+    const { Platform: t } = require("react-native");
+    return t.OS === "ios" ? "ios" : "android";
   } catch {
     return "android";
   }
 }
 function H() {
-  let e = null;
-  const t = W(), n = T().then((i) => {
-    e = i;
+  let t = null;
+  const e = W(), n = w().then((i) => {
+    t = i;
   }).catch(() => {
   });
   return { adapter: {
-    getContext: () => e || {
-      platform: t,
+    getContext: () => t || {
+      platform: e,
       deviceName: null,
       deviceBrand: null,
       deviceModel: null,
@@ -593,7 +595,7 @@ function H() {
       geolocation: null
     },
     getSessionId: _,
-    getGeolocation: w,
+    getGeolocation: C,
     onBackground: (i) => {
       try {
         const { AppState: a } = require("react-native"), s = a.addEventListener("change", (o) => {
@@ -607,19 +609,19 @@ function H() {
     }
   }, contextReady: n };
 }
-function Q(e) {
-  const t = e.collectors ?? ["screenViews", "lifecycle"], n = [];
-  return t.includes("screenViews") && e.navigationRef && n.push(
-    F({ navigationRef: e.navigationRef })
-  ), t.includes("touch") && n.push(U()), t.includes("lifecycle") && n.push(G()), n;
+function Q(t) {
+  const e = t.collectors ?? ["screenViews", "lifecycle"], n = [];
+  return e.includes("screenViews") && t.navigationRef && n.push(
+    F({ navigationRef: t.navigationRef })
+  ), e.includes("touch") && n.push(U()), e.includes("lifecycle") && n.push(G()), n;
 }
-function rt(e) {
-  const { adapter: t } = H(), n = Q(e), r = new A(
+function re(t) {
+  const { adapter: e } = H(), n = Q(t), r = new A(
     {
-      ...e,
+      ...t,
       collectors: [],
       // We handle collectors externally
-      platform: t
+      platform: e
     },
     n
   );
@@ -647,28 +649,28 @@ function rt(e) {
   };
 }
 export {
-  X as TrackablePressable,
+  J as TrackablePressable,
   A as Tracker,
   j as TrackerProvider,
-  z as clearMobileSessionId,
+  X as clearMobileSessionId,
   E as createConsentManager,
-  rt as createExpoTracker,
+  re as createExpoTracker,
   x as createHttpTransport,
   G as createLifecycleCollector,
   F as createScreenViewCollector,
   U as createTouchCollector,
   Y as createTrackablePressable,
   N as defaultConsentManager,
-  T as getMobileContext,
+  w as getMobileContext,
   K as getMobileContextWithGeo,
-  w as getMobileGeolocation,
+  C as getMobileGeolocation,
   _ as getMobileSessionId,
-  tt as isBrowserContext,
+  ee as isBrowserContext,
   Z as isMobileContext,
   $ as resetMobileContextCache,
   R as trackPress,
-  J as useTrackPress,
-  et as useTracker,
-  nt as useTrackerOptional
+  z as useTrackPress,
+  te as useTracker,
+  ne as useTrackerOptional
 };
 //# sourceMappingURL=expo.es.js.map

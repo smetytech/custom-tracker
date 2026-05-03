@@ -1,6 +1,6 @@
 {
 	"name": "@smety/tracker",
-	"version": "1.3.0",
+	"version": "1.4.0",
 	"description": "Lightweight analytics tracker with consent support, auto-click tracking, SPA navigation, and Expo/React Native support",
 	"main": "dist/tracker.es.js",
 	"module": "dist/tracker.es.js",
